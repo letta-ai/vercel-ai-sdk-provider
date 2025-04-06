@@ -4,9 +4,7 @@ import {
     ProviderV1,
 } from '@ai-sdk/provider';
 import {
-    FetchFunction,
     loadApiKey,
-    withoutTrailingSlash,
 } from '@ai-sdk/provider-utils';
 
 import {LettaClient} from "@letta-ai/letta-client";
@@ -60,7 +58,7 @@ export function createLetta(
     ) {
         if (new.target) {
             throw new Error(
-                'The Mistral model function cannot be called with the new keyword.',
+                'The Letta model function cannot be called with the new keyword.',
             );
         }
 

@@ -1,5 +1,5 @@
-import { letta } from '@letta-ai/vercel-ai-sdk-provider';
 import { streamText } from 'ai';
+import { letta } from '@letta-ai/vercel-ai-sdk-provider';
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;

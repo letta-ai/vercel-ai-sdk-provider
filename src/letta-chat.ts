@@ -125,6 +125,7 @@ export class LettaChatModel implements LanguageModelV1 {
             args.agentId,
             {
                 messages: args.messages,
+                streamTokens: true,
             },
         );
 
@@ -133,11 +134,24 @@ export class LettaChatModel implements LanguageModelV1 {
             async pull(controller) {
                 for await (const message of response) {
                     if (message.messageType === 'assistant_message') {
+                        let textDelta = '';
+                        if (typeof message.content === 'string') {
+                            textDelta = message.content;
+                        } else {
+                            message.content.forEach(v => {
+                                if (v.type === 'text') {
+                                    textDelta += v.text;
+                                }
+                            })
+                        }
+
                         controller.enqueue({
                             type: 'text-delta',
-                            textDelta: message.content,
+                            textDelta: textDelta,
                         });
                     }
+
+
 
                     if (message.messageType === 'tool_call_message') {
                         controller.enqueue({
@@ -156,6 +170,8 @@ export class LettaChatModel implements LanguageModelV1 {
                         });
                     }
                 }
+
+                controller.close();
             },
         });
 
