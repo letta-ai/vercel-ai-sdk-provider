@@ -1,10 +1,10 @@
 # AI SDK - Letta Provider
+![NPM Version](https://img.shields.io/npm/v/%40letta-ai%2Fvercel-ai-sdk-provider)
 
 
 ## Setup
 
 The Letta provider is available in the `@letta-ai/vercel-ai-sdk-provider` module. You can install it with
-
 ```bash
 npm i @letta-ai/vercel-ai-sdk-provider
 ```
