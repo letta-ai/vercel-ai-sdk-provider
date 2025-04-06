@@ -1,5 +1,5 @@
 import {LanguageModelV1Prompt} from "@ai-sdk/provider";
-import {MessageCreate, UserMessage} from "@letta-ai/letta-client/api";
+import {MessageCreate} from "@letta-ai/letta-client/api";
 
 export function convertToLettaMessage(prompt: LanguageModelV1Prompt): MessageCreate[] {
 

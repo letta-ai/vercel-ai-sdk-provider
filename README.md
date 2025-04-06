@@ -1,35 +1,30 @@
-# AI SDK - Mistral Provider
+# AI SDK - Letta Provider
 
-The **[Mistral provider](https://sdk.vercel.ai/providers/ai-sdk-providers/mistral)** for the [AI SDK](https://sdk.vercel.ai/docs) contains language model support for the Mistral chat API.
 
 ## Setup
 
-The Mistral provider is available in the `@ai-sdk/mistral` module. You can install it with
+The Letta provider is available in the `@letta-ai/vercel-ai-sdk-provider` module. You can install it with
 
 ```bash
-npm i @ai-sdk/mistral
+npm i @letta-ai/vercel-ai-sdk-provider
 ```
 
 ## Provider Instance
 
-You can import the default provider instance `mistral` from `@ai-sdk/mistral`:
+You can import the default provider instance `letta` from `@letta-ai/vercel-ai-sdk-provider`:
 
 ```ts
-import { mistral } from '@ai-sdk/mistral';
+import { letta } from '@letta-ai/vercel-ai-sdk-provider';
 ```
 
 ## Example
 
 ```ts
-import { mistral } from '@ai-sdk/mistral';
+import { mistral } from '@letta-ai/vercel-ai-sdk-provider';
 import { generateText } from 'ai';
 
 const { text } = await generateText({
-  model: mistral('mistral-large-latest'),
+  model: letta('your-agent-id'),
   prompt: 'Write a vegetarian lasagna recipe for 4 people.',
 });
 ```
-
-## Documentation
-
-Please check out the **[Mistral provider](https://sdk.vercel.ai/providers/ai-sdk-providers/mistral)** for more information.

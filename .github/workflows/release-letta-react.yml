@@ -15,7 +15,7 @@ jobs:
         uses: actions/setup-node@v3
 
       - name: Compile
-        working-directory: ./packages/letta-react
+        working-directory: .
         run: npm ci && npm run build
 
   test:
@@ -30,7 +30,7 @@ jobs:
 
       - name: Test
         working-directory: .
-        run: npm ci && npm test
+        run: npm ci && npm run test:node
 
   publish:
     needs: [compile, test]
