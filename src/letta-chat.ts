@@ -3,9 +3,6 @@ import {
     LanguageModelV1CallWarning,
     LanguageModelV1FunctionToolCall,
 } from '@ai-sdk/provider';
-import {
-    FetchFunction,
-} from '@ai-sdk/provider-utils';
 import {convertToLettaMessage} from "./convert-to-letta-message";
 import {LettaClient} from "@letta-ai/letta-client";
 
@@ -81,8 +78,8 @@ export class LettaChatModel implements LanguageModelV1 {
                 toolCalls.push({
                     toolCallType: 'function',
                     toolCallId: message.id,
-                    toolName: message.name,
-                    args: message.toolCall.arguments,
+                    toolName: message.name || '',
+                    args: message.toolCall.arguments || '',
                 });
             }
 

@@ -10,7 +10,6 @@ import {
 import {LettaClient} from "@letta-ai/letta-client";
 import {LettaChatModel} from "./letta-chat";
 
-
 export interface LettaProvider extends ProviderV1 {
     (
         agentId: string,
@@ -29,6 +28,9 @@ export interface LettaProvider extends ProviderV1 {
     textEmbedding(): EmbeddingModelV1<string>;
 
     textEmbeddingModel: () => EmbeddingModelV1<string>;
+
+    client: LettaClient
+
 }
 
 /**
@@ -38,6 +40,7 @@ export function createLetta(
     options: LettaClient.Options = {},
 ): LettaProvider {
 
+
     const client = new LettaClient({
         ...options,
         token: loadApiKey({
@@ -45,8 +48,9 @@ export function createLetta(
             environmentVariableName: 'LETTA_API_KEY',
             description: 'Letta',
         }),
-        baseUrl: options.baseUrl || 'https://api.letta.com',
+        baseUrl: options.baseUrl || process.env.BASE_URL_OVERRIDE || 'https://api.letta.com',
     })
+
 
     const createChatModel = (
         agentId: string
@@ -73,10 +77,18 @@ export function createLetta(
     provider.textEmbeddingModel = () => {
         throw new Error('unsupported');
     }
+
+    provider.client = client;
+
     return provider;
 }
 
+
+
 /**
- Default Mistral provider instance.
+ Default Letta provider instance.
  */
-export const letta = createLetta();
+export const lettaCloud = createLetta();
+export const lettaLocal = createLetta({
+    baseUrl: 'http://localhost:8283',
+});

@@ -1,5 +1,5 @@
 import { streamText } from 'ai';
-import { letta } from '@letta-ai/vercel-ai-sdk-provider';
+import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     }
 
     const result = streamText({
-        model: letta(process.env.LETTA_AGENT_ID),
+        model: lettaCloud(process.env.LETTA_AGENT_ID),
         messages,
     });
 

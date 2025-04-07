@@ -1,43 +1,50 @@
-'use client';
+'use server';
 
-import { useChat } from '@ai-sdk/react';
-import {useMemo} from "react";
+import {cookies} from "next/headers";
+import {
+    convertToAiSdkMessage,
+    lettaCloud,
+    loadDefaultProject,
+    loadDefaultTemplate
+} from "@letta-ai/vercel-ai-sdk-provider";
+import {Chat} from "@/app/Chat";
 
-export default function Chat() {
-    const { messages, status, input, handleInputChange, handleSubmit } = useChat();
 
-    const isLoading = useMemo(() => {
-        return status === 'streaming' || status === 'submitted'
-    }, [status]);
+async function getAgentId() {
+    const cookie = await cookies()
+    const activeAgentId = cookie.get('active-agent');
 
-    return (
-        <div className="flex flex-col w-full max-w-md py-24 mx-auto stretch">
-            {messages.map(message => (
-                <div key={message.id} className="whitespace-pre-wrap">
-                    {message.role === 'user' ? 'User: ' : 'AI: '}
-                    {message.parts.map((part, i) => {
-                        switch (part.type) {
-                            case 'text':
-                                return <div key={`${message.id}-${i}`}>{part.text}</div>;
-                        }
-                    })}
-                </div>
-            ))}
+    if (activeAgentId) {
+        return activeAgentId.value
+    }
 
-            <form onSubmit={handleSubmit}>
-                {isLoading && (
-                    <div className="flex items-center justify-center w-full h-12">
-                      Streaming...
-                    </div>
-                )}
-                <input
-                    className="fixed dark:bg-zinc-900 bottom-0 w-full max-w-md p-2 mb-8 border border-zinc-300 dark:border-zinc-800 rounded shadow-xl"
-                    value={input}
-                    disabled={status !== 'ready'}
-                    placeholder="Say something..."
-                    onChange={handleInputChange}
-                />
-            </form>
-        </div>
-    );
+
+    if (!loadDefaultTemplate) {
+        throw new Error('Missing LETTA_DEFAULT_TEMPLATE_NAME environment variable');
+    }
+
+    const response = await lettaCloud.client.templates.createAgents(loadDefaultProject, loadDefaultTemplate)
+
+    const nextActiveAgentId = response.agents[0].id;
+
+
+    return nextActiveAgentId;
+}
+
+async function getExistingMessages(agentId: string) {
+    return convertToAiSdkMessage(await lettaCloud.client.agents.messages.list(agentId), {allowMessageTypes: ['user_message', 'assistant_message']});
+}
+
+async function saveAgentIdCookie(agentId: string) {
+    'use server'
+    const cookie = await cookies();
+    await cookie.set('active-agent', agentId, {path: '/'});
+}
+
+export default async function Homepage() {
+    const agentId = await getAgentId();
+    const existingMessages = await getExistingMessages(agentId);
+
+
+    return <Chat existingMessages={existingMessages} saveAgentIdCookie={saveAgentIdCookie} agentId={agentId}/>
 }
