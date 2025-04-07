@@ -19,7 +19,10 @@ describe('convertToAiSdkMessage', () => {
                 role: 'user',
                 content: 'Hello',
                 id: '1',
-                parts: [],
+                parts: [{
+                    type: 'text',
+                    text: 'Hello'
+                }],
                 createdAt: new Date('2023-10-01T10:00:00Z')
             }
         ];
@@ -42,7 +45,10 @@ describe('convertToAiSdkMessage', () => {
                 role: 'assistant',
                 content: 'Hi there!',
                 id: '2',
-                parts: [],
+                parts: [{
+                    type: 'text',
+                    text: 'Hi there!'
+                }],
                 createdAt: new Date('2023-10-01T10:05:00Z')
             }
         ];
@@ -179,6 +185,10 @@ describe('convertToAiSdkMessage', () => {
                         type: 'reasoning',
                         reasoning: 'This is a reasoning message',
                         details: []
+                    },
+                    {
+                        type: 'text',
+                        text: 'Hello'
                     }
                 ],
                 createdAt: new Date('2023-10-01T10:25:00Z')
