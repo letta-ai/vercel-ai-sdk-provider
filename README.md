@@ -41,7 +41,7 @@ import { lettaLocal } from '@letta-ai/vercel-ai-sdk-provider';
 import { generateText } from 'ai';
 
 const { text } = await generateText({
-  model: lettaCloud('your-agent-id'),
+  model: lettaLocal('your-agent-id'),
   prompt: 'Write a vegetarian lasagna recipe for 4 people.',
 });
 ```
