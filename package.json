@@ -7,8 +7,7 @@
   "module": "example/letta-ai-sdk-example/node_modules/@letta-ai/vercel-ai-sdk-provider/dist/index.mjs",
   "types": "./dist/index.d.ts",
   "files": [
-    "example/letta-ai-sdk-example/node_modules/@letta-ai/vercel-ai-sdk-provider/dist/**/*",
-    "CHANGELOG.md"
+    "dist"
   ],
   "scripts": {
     "build": "tsup",
