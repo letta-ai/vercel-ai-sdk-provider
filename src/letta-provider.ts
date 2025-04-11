@@ -3,9 +3,6 @@ import {
     LanguageModelV1,
     ProviderV1,
 } from '@ai-sdk/provider';
-import {
-    loadApiKey,
-} from '@ai-sdk/provider-utils';
 
 import {LettaClient} from "@letta-ai/letta-client";
 import {LettaChatModel} from "./letta-chat";
@@ -39,18 +36,11 @@ export interface LettaProvider extends ProviderV1 {
 export function createLetta(
     options: LettaClient.Options = {},
 ): LettaProvider {
-
-
     const client = new LettaClient({
         ...options,
-        token: loadApiKey({
-            apiKey: options.token as string,
-            environmentVariableName: 'LETTA_API_KEY',
-            description: 'Letta',
-        }),
+        token: options.token || process.env.LETTA_API_KEY,
         baseUrl: options.baseUrl || process.env.BASE_URL_OVERRIDE || 'https://api.letta.com',
     })
-
 
     const createChatModel = (
         agentId: string
