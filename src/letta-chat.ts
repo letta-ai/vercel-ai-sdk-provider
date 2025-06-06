@@ -90,6 +90,7 @@ export class LettaChatModel implements LanguageModelV1 {
 
         return {
             text,
+            reasoning,
             toolCalls,
             finishReason: 'stop',
             usage: {
