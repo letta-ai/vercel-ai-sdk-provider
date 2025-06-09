@@ -114,7 +114,10 @@ export class LettaChatModel implements LanguageModelV1 {
     async doStream(
         options: Parameters<LanguageModelV1['doStream']>[0],
     ): Promise<Awaited<ReturnType<LanguageModelV1['doStream']>>> {
-        const {args, warnings} = this.getArgs(options);
+        const {args, warnings} = this.getArgs({options: {
+            ...options,
+            prompt: options.prompt.filter(p => p.role !== "assistant" && p.role !== "tool")
+        }});
 
         const body = {...args, stream: true};
 
