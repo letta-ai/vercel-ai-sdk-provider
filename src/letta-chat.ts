@@ -135,6 +135,7 @@ export class LettaChatModel implements LanguageModelV1 {
         const readableStream = new ReadableStream({
             async pull(controller) {
                 for await (const message of response) {
+
                     if (message.messageType === 'assistant_message') {
                         let textDelta = '';
                         if (typeof message.content === 'string') {
@@ -154,20 +155,17 @@ export class LettaChatModel implements LanguageModelV1 {
                     }
 
 
+                    let lastToolName = '';
+                    let lastToolCallId = '';
                     if (message.messageType === 'tool_call_message') {
+                        lastToolName = message.toolCall.name || '';
+                        lastToolCallId = message.toolCall.toolCallId || '';
                         controller.enqueue({
                             type: 'tool-call-delta',
                             toolCallType: 'function',
-                            toolCallId: message.id,
-                            toolName: message.name,
+                            toolCallId: lastToolCallId,
+                            toolName: lastToolName,
                             argsTextDelta: message.toolCall.arguments,
-                        });
-                        controller.enqueue({
-                            type: 'tool-call',
-                            toolCallType: 'function',
-                            toolCallId: message.id,
-                            toolName: message.name,
-                            args: message.toolCall.arguments,
                         });
                     }
                 }
