@@ -131,7 +131,6 @@ export class LettaChatModel implements LanguageModelV1 {
         );
 
 
-
         const readableStream = new ReadableStream({
             async pull(controller) {
                 let lastToolName = '';
@@ -158,10 +157,15 @@ export class LettaChatModel implements LanguageModelV1 {
                     }
 
 
-
                     if (message.messageType === 'tool_call_message') {
-                        lastToolName = message.toolCall.name || '';
-                        lastToolCallId = message.toolCall.toolCallId || '';
+
+                        if (message.toolCall.name) {
+                            lastToolName = message.toolCall.name;
+                        }
+
+                        if (message.toolCall.toolCallId) {
+                            lastToolCallId = message.toolCall.toolCallId;
+                        }
                         controller.enqueue({
                             type: 'tool-call-delta',
                             toolCallType: 'function',
@@ -170,7 +174,7 @@ export class LettaChatModel implements LanguageModelV1 {
                             argsTextDelta: message.toolCall.arguments,
                         });
                     }
-                    
+
 
                 }
 
