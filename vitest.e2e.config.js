@@ -3,8 +3,8 @@ import { defineConfig } from 'vite';
 // https://vitejs.dev/config/
 export default defineConfig({
   test: {
-    environment: 'edge-runtime',
+    environment: 'node',
     globals: true,
-    include: ['**/*.test.ts', '**/*.test.tsx'],
+    include: ['**/*.e2e.ts', '**/*.e2e.tsx'],
   },
 });

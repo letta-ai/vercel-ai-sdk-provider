@@ -16,8 +16,8 @@
     "lint": "eslint \"./**/*.ts*\"",
     "type-check": "tsc --noEmit",
     "prettier-check": "prettier --check \"./**/*.ts*\"",
-    "test": "npm test:node && npm test:edge",
-    "test:edge": "vitest --config vitest.edge.config.js --run",
+    "test": "npm run test:node && npm run test:e2e",
+    "test:e2e": "vitest --config vitest.e2e.config.js --run",
     "test:node": "vitest --config vitest.node.config.js --run",
     "test:node:watch": "vitest --config vitest.node.config.js"
   },
@@ -37,6 +37,8 @@
   },
   "devDependencies": {
     "@types/node": "20.17.24",
+    "ai": "^4.3.19",
+    "dotenv": "^17.2.0",
     "tsup": "^8",
     "typescript": "5.6.3",
     "vitest": "^3.1.1",

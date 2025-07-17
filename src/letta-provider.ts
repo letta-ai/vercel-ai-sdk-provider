@@ -82,3 +82,5 @@ export const lettaCloud = createLetta();
 export const lettaLocal = createLetta({
     baseUrl: 'http://localhost:8283',
 });
+
+
