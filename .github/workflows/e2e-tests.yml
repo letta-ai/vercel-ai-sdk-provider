@@ -25,3 +25,4 @@ jobs:
         run: npm run test:e2e
         env:
           LETTA_API_KEY: ${{ secrets.LETTA_API_KEY }}
+          PROJECT_ID: ${{ secrets.PROJECT_ID }}
