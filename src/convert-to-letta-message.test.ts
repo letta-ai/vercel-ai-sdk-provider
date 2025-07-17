@@ -67,7 +67,7 @@ describe('convertToLettaMessage', () => {
             {
                 role: 'system',
                 content: [
-                    { type: 'text', text: 'System message' }
+                    { type: 'text', text: 'System message!' }
                 ]
             }
         ];
