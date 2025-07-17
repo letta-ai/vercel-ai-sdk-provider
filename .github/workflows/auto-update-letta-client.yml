@@ -75,10 +75,18 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
+           // update the version in package.json
           git add package.json package-lock.json
+         
           git commit -m "chore: update @letta-ai/letta-client to ${{ steps.latest-version.outputs.latest }} and bump SDK to ${{ steps.update-check.outputs.new_sdk_version }}
 
           🤖 Automatically updated @letta-ai/letta-client version"
+          
+          npm version minor
+          git add package.json package-lock.json
+          
+          git commit -m "chore: bump SDK version to ${{ steps.update-check.outputs.new_sdk_version }}"  
+          
           git push
           
       - name: Create summary
