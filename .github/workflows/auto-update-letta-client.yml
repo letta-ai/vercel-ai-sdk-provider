@@ -7,6 +7,9 @@ on:
   push:
     paths:
       - '.github/workflows/auto-update-letta-client.yml'
+  pull_request:
+      paths:
+          - '.github/workflows/auto-update-letta-client.yml'
 
 jobs:
   check-and-update:
@@ -70,8 +73,8 @@ jobs:
         env:
           LETTA_API_KEY: ${{ secrets.LETTA_API_KEY }}
           
-      - name: Commit and push changes
-        if: steps.update-check.outputs.needs_update == 'true' && github.event_name != 'push'
+      - name: Commit changes
+        if: steps.update-check.outputs.needs_update == 'true'
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
@@ -86,8 +89,11 @@ jobs:
           git add package.json package-lock.json
           
           git commit -m "chore: bump SDK version to ${{ steps.update-check.outputs.new_sdk_version }}"  
-          
-          git push
+
+      - name: Push changes
+        if: steps.update-check.outputs.needs_update == 'true' && github.event_name != 'pull_request'
+        run: |
+          git push origin HEAD:main
           
       - name: Create summary
         run: |
