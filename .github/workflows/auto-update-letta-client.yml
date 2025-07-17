@@ -87,7 +87,7 @@ jobs:
           npm version minor
 
       - name: Push changes
-        if: steps.update-check.outputs.needs_update == 'true' && github.event_name != 'pull_request'
+        if: steps.update-check.outputs.needs_update == 'true' && github.ref == 'refs/heads/main'
         run: |
           git push origin HEAD:main
           
