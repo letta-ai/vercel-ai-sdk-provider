@@ -68,7 +68,6 @@ The `vercel-ai-sdk-provider` extends the letta node client, you can access the o
 import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
 
 lettaCloud.client.agents.list();
-
 ```
 
 ## More Examples
