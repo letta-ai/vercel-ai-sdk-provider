@@ -21,8 +21,7 @@ import { letta } from '@letta-ai/vercel-ai-sdk-provider';
 ### Using Letta Cloud (https://api.letta.com)
 Create a file called `.env.local` and add your [API Key](https://app.letta.com/api-keys)
 ```text
-LETTA_API_KEY=<your api key>
-
+LETTA_API_KEY=<your_letta_cloud_apikey>
 ```
 
 ```ts
@@ -53,12 +52,12 @@ import { createLetta } from '@letta-ai/vercel-ai-sdk-provider';
 import { generateText } from 'ai';
 
 const letta = createLetta({
-    baseUrl: '<your-base-url>',
-    token: '<your-access-token>'
+    baseUrl: '<your_base_url>',
+    token: '<your_access_token>'
 })
 
 const { text } = await generateText({
-  model: letta('your-agent-id'),
+  model: letta('your_agent_id'),
   prompt: 'Write a vegetarian lasagna recipe for 4 people.',
 });
 ```
@@ -68,11 +67,9 @@ The `vercel-ai-sdk-provider` extends the letta node client, you can access the o
 ```ts
 import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
 
-lettaCloud.agents.list();
+lettaCloud.client.agents.list();
 
 ```
-
-
 
 ## More Examples
 Check out our simple example using nextjs to stream letta messages to your frontend in [examples/letta-ai-sdk-example](examples/letta-ai-sdk-example)
