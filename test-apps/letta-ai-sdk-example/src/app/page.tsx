@@ -18,15 +18,17 @@ async function getAgentId() {
         return activeAgentId.value
     }
 
+    if (!loadDefaultProject) {
+        throw new Error('Missing LETTA_DEFAULT_PROJECT_ID environment variable');
+    }
 
     if (!loadDefaultTemplate) {
         throw new Error('Missing LETTA_DEFAULT_TEMPLATE_NAME environment variable');
     }
 
-    const response = await lettaCloud.client.templates.createAgents(loadDefaultProject, loadDefaultTemplate)
+    const response = await lettaCloud.client.templates.agents.create(loadDefaultProject, loadDefaultTemplate)
 
     const nextActiveAgentId = response.agents[0].id;
-
 
     return nextActiveAgentId;
 }
@@ -44,7 +46,6 @@ async function saveAgentIdCookie(agentId: string) {
 export default async function Homepage() {
     const agentId = await getAgentId();
     const existingMessages = await getExistingMessages(agentId);
-
 
     return <Chat existingMessages={existingMessages} saveAgentIdCookie={saveAgentIdCookie} agentId={agentId}/>
 }
