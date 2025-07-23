@@ -6,7 +6,7 @@ import {newAgent, newAgentDescription, newAgentName, newAgentProjectId, testMess
 
 dotenv.config();
 
-const { lettaLocal} = await import("../letta-provider");
+const {lettaLocal} = await import("../letta-provider");
 
 describe('e2e Letta Local', () => {
     before(async () => {
