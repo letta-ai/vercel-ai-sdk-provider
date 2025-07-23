@@ -1,7 +1,7 @@
 import {describe, it, expect} from 'vitest';
 import {before} from "node:test";
 import dotenv from 'dotenv';
-import {generateText} from "ai";
+import {generateText, streamText} from "ai";
 import {newAgent, newAgentDescription, newAgentName, newAgentProjectId, testMessage} from "./src/e2e/const";
 
 dotenv.config();
@@ -20,7 +20,7 @@ describe('e2e Letta Local', () => {
         }
     })
 
-    it('it should create an agent, chat with it and delete it', {
+    it('[generate] it should create an agent, chat with it and delete it', {
         timeout: 100_000 // 100 seconds
     }, async () => {
         const agent = await lettaLocal.client.agents.create(newAgent);
@@ -34,6 +34,34 @@ describe('e2e Letta Local', () => {
         })
 
         expect(message.text).to.exist
+
+        await lettaLocal.client.agents.delete(agent.id);
+
+        await expect(
+            lettaLocal.client.agents.retrieve(agent.id)
+        ).rejects.toHaveProperty('statusCode', 404)
+
+    });
+
+    it('[stream] it should create an agent, chat with it and delete it', {
+        timeout: 100_000 // 100 seconds
+    }, async () => {
+        const agent = await lettaLocal.client.agents.create(newAgent);
+
+        expect(agent.name).toBe(newAgentName);
+        expect(agent.description).toBe(newAgentDescription);
+
+        const {textStream} = streamText({
+            model: lettaLocal(agent.id),
+            messages: testMessage
+        })
+
+        let result = ''
+        for await (const text of textStream) {
+            result += text
+        }
+
+        expect(result).to.exist
 
         await lettaLocal.client.agents.delete(agent.id);
 
