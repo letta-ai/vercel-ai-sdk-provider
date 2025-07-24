@@ -1,5 +1,5 @@
 import { streamText } from 'ai';
-import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
+import { lettaCloud, lettaLocal } from '@letta-ai/vercel-ai-sdk-provider';
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
@@ -11,10 +11,19 @@ export async function POST(req: Request) {
         throw new Error('Missing LETTA_AGENT_ID environment variable');
     }
 
-    const result = streamText({
-        model: lettaCloud(process.env.LETTA_AGENT_ID),
-        messages,
-    });
+    let result
+
+    if (process.env.USE_THIS_LOCALLY) {
+        result = streamText({
+            model: lettaLocal(process.env.LETTA_AGENT_ID),
+            messages,
+        });
+    } else {
+        result = streamText({
+            model: lettaCloud(process.env.LETTA_AGENT_ID),
+            messages,
+        });
+    }
 
     return result.toDataStreamResponse();
 }

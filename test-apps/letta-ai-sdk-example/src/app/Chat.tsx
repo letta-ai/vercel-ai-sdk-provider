@@ -28,6 +28,18 @@ export function Chat(props: ChatProps) {
     const {messages, status, input, handleInputChange, handleSubmit} = useChat({
         body: {agentId},
         initialMessages: existingMessages,
+        streamProtocol: 'data',
+        onFinish: (message, { usage, finishReason }) => {
+            console.log('Finished streaming message:', message);
+            console.log('Token usage:', usage);
+            console.log('Finish reason:', finishReason);
+        },
+        onError: error => {
+            console.error('An error occurred:', error);
+        },
+        onResponse: response => {
+            console.log('Received HTTP response from server:', response);
+        },
     });
 
     const isLoading = useMemo(() => {
