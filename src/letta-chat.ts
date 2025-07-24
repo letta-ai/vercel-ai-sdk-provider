@@ -121,15 +121,13 @@ export class LettaChatModel implements LanguageModelV1 {
 
         const body = {...args, stream: true};
 
-
         const response = await this.client.agents.messages.createStream(
             args.agentId,
             {
-                messages: args.messages,
+                messages: args.messages.slice(-1), // backend SDK only supports one message at a time
                 streamTokens: true,
             },
         );
-
 
         const readableStream = new ReadableStream({
             async pull(controller) {
