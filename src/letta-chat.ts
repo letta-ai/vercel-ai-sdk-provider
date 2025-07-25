@@ -174,6 +174,21 @@ export class LettaChatModel implements LanguageModelV1 {
                     }
 
 
+                    if (message.messageType === 'reasoning_message') {
+
+                        let textDelta = '';
+
+                        if (typeof message.reasoning === 'string') {
+                            textDelta = message.reasoning;
+                        }
+
+                        controller.enqueue({
+                            type: 'reasoning',
+                            reasoningId: message.id,
+                            textDelta: textDelta,
+                            reasoning: true
+                        });
+                    }
                 }
 
                 controller.close();

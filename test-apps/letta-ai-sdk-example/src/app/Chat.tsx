@@ -56,6 +56,8 @@ export function Chat(props: ChatProps) {
                         switch (part.type) {
                             case 'text':
                                 return <div key={`${message.id}-${i}`}>{part.text}</div>;
+                            case 'reasoning':
+                                return <div key={`${message.id}-${i}`}>{part.reasoning}</div>;
                         }
                     })}
                 </div>
