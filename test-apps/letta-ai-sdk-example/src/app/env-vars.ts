@@ -1,7 +1,4 @@
-const AGENT_ID = ''
-const PROJECT_ID = '';
-const DEFAULT_TEMPLATE_NAME = '';
-const DEFAULT_PROJECT_SLUG = 'default-project'
+const AGENT_ID = 'agent-338196a3-3a09-4766-bc09-ce56e5cc4cbd'
 const TEST_MODE: 'local' | 'cloud' = 'cloud'
 
-export { AGENT_ID, PROJECT_ID, DEFAULT_PROJECT_SLUG, DEFAULT_TEMPLATE_NAME, TEST_MODE }
+export { AGENT_ID, TEST_MODE }
