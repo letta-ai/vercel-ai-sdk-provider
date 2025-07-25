@@ -14,11 +14,13 @@ export async function POST(req: Request) {
     let result
 
     if (process.env.USE_THIS_LOCALLY) {
+        console.log('Using local Letta agent:', process.env.LETTA_AGENT_ID);
         result = streamText({
             model: lettaLocal(process.env.LETTA_AGENT_ID),
             messages,
         });
     } else {
+        console.log('Using Cloud Letta agent:', process.env.LETTA_AGENT_ID);
         result = streamText({
             model: lettaCloud(process.env.LETTA_AGENT_ID),
             messages,
@@ -27,4 +29,3 @@ export async function POST(req: Request) {
 
     return result.toDataStreamResponse();
 }
-
