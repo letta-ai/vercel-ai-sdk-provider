@@ -1,6 +1,5 @@
-import {loadApiKey} from "@ai-sdk/provider-utils";
+import { DEFAULT_PROJECT_SLUG, DEFAULT_TEMPLATE_NAME } from "@/test-apps/letta-ai-sdk-example/src/app/env-vars";
 
-export const loadDefaultProject = process.env.LETTA_DEFAULT_PROJECT_SLUG || 'default-project'
+export const loadDefaultProject = DEFAULT_PROJECT_SLUG || 'default-project'
 
-
-export const loadDefaultTemplate = process.env.LETTA_DEFAULT_TEMPLATE_NAME;
+export const loadDefaultTemplate = DEFAULT_TEMPLATE_NAME;

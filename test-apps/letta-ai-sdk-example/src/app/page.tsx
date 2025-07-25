@@ -9,6 +9,7 @@ import {
     loadDefaultTemplate
 } from "@letta-ai/vercel-ai-sdk-provider";
 import {Chat} from "@/app/Chat";
+import {TEST_MODE} from "@/app/env-vars";
 
 
 async function getAgentId() {
@@ -28,7 +29,7 @@ async function getAgentId() {
     }
 
     let response;
-    if (process.env.USE_THIS_LOCALLY) {
+    if (TEST_MODE === 'local') {
         console.log('Using local Letta agent:', loadDefaultTemplate);
         response = await lettaLocal.client.templates.agents.create(loadDefaultProject, loadDefaultTemplate);
     } else {
@@ -42,7 +43,7 @@ async function getAgentId() {
 }
 
 async function getExistingMessages(agentId: string) {
-    return process.env.USE_THIS_LOCALLY ? convertToAiSdkMessage(await lettaLocal.client.agents.messages.list(agentId), {allowMessageTypes: ['user_message', 'assistant_message']}) : convertToAiSdkMessage(await lettaCloud.client.agents.messages.list(agentId), {allowMessageTypes: ['user_message', 'assistant_message']});
+    return TEST_MODE === 'local' ? convertToAiSdkMessage(await lettaLocal.client.agents.messages.list(agentId), {allowMessageTypes: ['user_message', 'assistant_message']}) : convertToAiSdkMessage(await lettaCloud.client.agents.messages.list(agentId), {allowMessageTypes: ['user_message', 'assistant_message']});
 }
 
 async function saveAgentIdCookie(agentId: string) {
