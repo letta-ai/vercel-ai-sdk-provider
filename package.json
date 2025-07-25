@@ -1,6 +1,6 @@
 {
   "name": "@letta-ai/vercel-ai-sdk-provider",
-  "version": "0.1.21",
+  "version": "0.1.22",
   "license": "MIT",
   "sideEffects": false,
   "main": "test-apps/letta-ai-sdk-example/node_modules/@letta-ai/vercel-ai-sdk-provider/dist/index.js",
@@ -34,7 +34,7 @@
     "@ai-sdk/provider": "1.1.0",
     "@ai-sdk/provider-utils": "2.2.4",
     "@ai-sdk/ui-utils": "^1.2.5",
-    "@letta-ai/letta-client": "^0.1.163"
+    "@letta-ai/letta-client": "^0.1.164"
   },
   "devDependencies": {
     "@types/node": "20.17.24",
