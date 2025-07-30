@@ -146,13 +146,14 @@ export function convertToAiSdkMessage(messages: LettaMessageUnion[], options: Co
             const toolInvocation: ToolInvocationUIPart = {
                 type: 'tool-invocation',
                 toolInvocation: {
-                    state: 'call',
+                    state: 'result', // this should be a tool "call", but see reason below
+                    // @ts-ignore
+                    result: '', // this prevents the "ToolInvocation must have a result" error
                     toolCallId: message.toolCall.toolCallId || '',
                     toolName: message.toolCall.name || '',
                     args: message.toolCall.arguments || '',
                 }
             }
-
 
             // @ts-ignore
             sdkMessageObj[message.id].parts.push(toolInvocation);
