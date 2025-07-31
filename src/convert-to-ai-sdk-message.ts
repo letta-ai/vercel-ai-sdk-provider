@@ -136,44 +136,24 @@ export function convertToAiSdkMessage(messages: LettaMessageUnion[], options: Co
             sdkMessageObj[message.id].createdAt = message.date;
         }
 
-        if (message.messageType === 'tool_call_message') {
+        // Letta handles the tool call message, so the tool *return* message is not used
+        if (message.messageType === 'tool_return_message' || message.messageType === 'tool_call_message') {
             if (!sdkMessageObj[message.id].parts) {
                 sdkMessageObj[message.id].parts = [];
             }
 
             sdkMessageObj[message.id].role = 'assistant';
 
-            const toolInvocation: ToolInvocationUIPart = {
-                type: 'tool-invocation',
-                toolInvocation: {
-                    state: 'result', // this should be a tool "call", but see reason below
-                    // @ts-ignore
-                    result: '', // this prevents the "ToolInvocation must have a result" error
-                    toolCallId: message.toolCall.toolCallId || '',
-                    toolName: message.toolCall.name || '',
-                    args: message.toolCall.arguments || '',
-                }
-            }
-
-            // @ts-ignore
-            sdkMessageObj[message.id].parts.push(toolInvocation);
-        }
-
-        if (message.messageType === 'tool_return_message') {
-            if (!sdkMessageObj[message.id].parts) {
-                sdkMessageObj[message.id].parts = [];
-            }
-
-            sdkMessageObj[message.id].role = 'assistant';
+            const isToolCallMessage = message.messageType === 'tool_call_message';
 
             const toolInvocation: ToolInvocationUIPart = {
                 type: 'tool-invocation',
                 toolInvocation: {
                     state: 'result',
-                    result: message.toolReturn,
-                    toolCallId: message.toolCallId || '',
-                    toolName: message.name || '',
-                    args: {},
+                    result: isToolCallMessage ? '' : message.toolReturn,
+                    toolCallId: isToolCallMessage ? message.toolCall.toolCallId || '' : message.toolCallId || '',
+                    toolName: isToolCallMessage ? message.toolCall.name || '' : message.name || '',
+                    args: isToolCallMessage ? message.toolCall.arguments || '' : {},
                 }
             }
 
