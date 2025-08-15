@@ -59,9 +59,15 @@ export class LettaChatModel implements LanguageModelV1 {
 
         const {
             messages
-        } = await this.client.agents.messages.create(args.agentId, {
-            messages: args.messages,
-        })
+        } = await this.client.agents.messages.create(
+            args.agentId, 
+            {
+                messages: args.messages,
+            },
+            {
+                timeoutInSeconds: 1000,
+            },
+        )
 
 
         let text: string = '';
@@ -126,6 +132,9 @@ export class LettaChatModel implements LanguageModelV1 {
             {
                 messages: args.messages.slice(-1), // backend SDK only supports one message at a time
                 streamTokens: true,
+            },
+            {
+                timeoutInSeconds: 1000,
             },
         );
 
