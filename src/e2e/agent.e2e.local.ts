@@ -1,73 +1,142 @@
-import {describe, it, expect} from 'vitest';
-import {before} from "node:test";
-import dotenv from 'dotenv';
-import {generateText, streamText} from "ai";
-import {newAgent, newAgentDescription, newAgentName, newAgentProjectId, testMessage} from "./src/e2e/const";
+import { describe, it, expect } from "vitest";
+import { before } from "node:test";
+import dotenv from "dotenv";
+import { generateText, streamText } from "ai";
+import {
+  newAgent,
+  newAgentDescription,
+  newAgentName,
+  newAgentProjectId,
+  testMessage,
+  testMessageWithAssistantRole,
+  testMessageWithSystemRole,
+  testMessageWithToolRole,
+} from "./src/e2e/const";
 
 dotenv.config();
 
-const {lettaLocal} = await import("../letta-provider");
+const { lettaLocal } = await import("../letta-provider");
 
-describe('e2e Letta Local', () => {
-    before(async () => {
-        const list = await lettaLocal.client.agents.list({
-            name: newAgentName,
-            projectId: newAgentProjectId
-        })
-
-        if (list[0]) {
-            await lettaLocal.client.agents.delete(list[0].id);
-        }
-    })
-
-    it('[generate] it should create an agent, chat with it and delete it', {
-        timeout: 100_000 // 100 seconds
-    }, async () => {
-        const agent = await lettaLocal.client.agents.create(newAgent);
-
-        expect(agent.name).toBe(newAgentName);
-        expect(agent.description).toBe(newAgentDescription);
-
-        const message = await generateText({
-            model: lettaLocal(agent.id),
-            messages: testMessage
-        })
-
-        expect(message.text).to.exist
-
-        await lettaLocal.client.agents.delete(agent.id);
-
-        await expect(
-            lettaLocal.client.agents.retrieve(agent.id)
-        ).rejects.toHaveProperty('statusCode', 404)
-
+describe("e2e Letta Local", () => {
+  before(async () => {
+    const list = await lettaLocal.client.agents.list({
+      name: newAgentName,
+      projectId: newAgentProjectId,
     });
 
-    it('[stream] it should create an agent, chat with it and delete it', {
-        timeout: 100_000 // 100 seconds
-    }, async () => {
-        const agent = await lettaLocal.client.agents.create(newAgent);
+    if (list[0]) {
+      await lettaLocal.client.agents.delete(list[0].id);
+    }
+  });
 
-        expect(agent.name).toBe(newAgentName);
-        expect(agent.description).toBe(newAgentDescription);
+  it(
+    "[generate] it should create an agent, chat with it and delete it",
+    {
+      timeout: 100_000, // 100 seconds
+    },
+    async () => {
+      const agent = await lettaLocal.client.agents.create(newAgent);
 
-        const {textStream} = streamText({
-            model: lettaLocal(agent.id),
-            messages: testMessage
-        })
+      expect(agent.name).toBe(newAgentName);
+      expect(agent.description).toBe(newAgentDescription);
 
-        let result = ''
-        for await (const text of textStream) {
-            result += text
-        }
+      let message;
 
-        expect(result).to.exist
+      // Type: User
+      message = await generateText({
+        model: lettaLocal(agent.id),
+        messages: testMessage,
+      });
+      expect(message.text).to.exist.and.not.contain('3:"An error occurred."');
 
-        await lettaLocal.client.agents.delete(agent.id);
+      // Type: Assistant
+      await expect(
+        generateText({
+          model: lettaLocal(agent.id),
+          messages: testMessageWithAssistantRole,
+        }),
+      ).rejects.toThrowError(new Error("Assistant role is not supported"));
 
-        await expect(
-            lettaLocal.client.agents.retrieve(agent.id)
-        ).rejects.toHaveProperty('statusCode', 404)
+      // Type: System
+      message = await generateText({
+        model: lettaLocal(agent.id),
+        messages: testMessageWithSystemRole,
+      });
+      expect(message.text).to.exist.and.not.contain('3:"An error occurred."');
 
-    });
-})
+      // Type: Tool
+      await expect(
+        generateText({
+          model: lettaLocal(agent.id),
+          messages: testMessageWithToolRole,
+        }),
+      ).rejects.toThrow();
+
+      // Delete
+      await lettaLocal.client.agents.delete(agent.id);
+
+      await expect(
+        lettaLocal.client.agents.retrieve(agent.id),
+      ).rejects.toHaveProperty("statusCode", 404);
+    },
+  );
+
+  it(
+    "[stream] it should create an agent, chat with it and delete it",
+    {
+      timeout: 100_000, // 100 seconds
+    },
+    async () => {
+      const agent = await lettaLocal.client.agents.create(newAgent);
+
+      expect(agent.name).toBe(newAgentName);
+      expect(agent.description).toBe(newAgentDescription);
+
+      let result = "";
+
+      // Type: User
+      const { textStream: userTextStream } = streamText({
+        model: lettaLocal(agent.id),
+        messages: testMessage,
+      });
+      for await (const text of userTextStream) {
+        result += text;
+      }
+      expect(result).to.exist.and.not.contain('3:"An error occurred."');
+
+      // Type: Assistant
+      const { textStream: assistantTextStream } = streamText({
+        model: lettaLocal(agent.id),
+        messages: testMessageWithAssistantRole,
+      });
+      for await (const text of assistantTextStream) {
+        result += text;
+      }
+      expect(result).to.exist.and.not.contain('3:"An error occurred."');
+
+      // Type: System
+      const { textStream: systemTextStream } = streamText({
+        model: lettaLocal(agent.id),
+        messages: testMessageWithSystemRole,
+      });
+      for await (const text of systemTextStream) {
+        result += text;
+      }
+      expect(result).to.exist.and.not.contain('3:"An error occurred."');
+
+      // Type: Tool
+      await expect(async () => {
+        streamText({
+          model: lettaLocal(agent.id),
+          messages: testMessageWithToolRole,
+        });
+      }).rejects.toThrow();
+
+      await lettaLocal.client.agents.delete(agent.id);
+
+      await expect(
+        lettaLocal.client.agents.retrieve(agent.id),
+      ).rejects.toHaveProperty("statusCode", 404);
+    },
+  );
+});
