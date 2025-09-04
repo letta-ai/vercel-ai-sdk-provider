@@ -1,6 +1,6 @@
 {
   "name": "@letta-ai/vercel-ai-sdk-provider",
-  "version": "0.1.100",
+  "version": "0.1.101",
   "license": "MIT",
   "sideEffects": false,
   "main": "test-apps/letta-ai-sdk-example/node_modules/@letta-ai/vercel-ai-sdk-provider/dist/index.js",
