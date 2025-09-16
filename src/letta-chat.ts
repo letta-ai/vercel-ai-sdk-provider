@@ -1,41 +1,60 @@
 import {
-  LanguageModelV1,
-  LanguageModelV1CallWarning,
-  LanguageModelV1FunctionToolCall,
+  LanguageModelV2,
+  LanguageModelV2CallOptions,
+  LanguageModelV2CallWarning,
+  LanguageModelV2Content,
+  LanguageModelV2FinishReason,
+  LanguageModelV2StreamPart,
+  LanguageModelV2Usage,
 } from "@ai-sdk/provider";
 import { convertToLettaMessage } from "./convert-to-letta-message";
 import { LettaClient } from "@letta-ai/letta-client";
+import type { LettaMessageUnion } from "@letta-ai/letta-client/api";
 
-export class LettaChatModel implements LanguageModelV1 {
-  readonly specificationVersion =
-    "v1" as LanguageModelV1["specificationVersion"];
-  readonly defaultObjectGenerationMode = "json";
-  readonly supportsImageUrls = false;
+interface ProviderOptions {
+  agent?: {
+    id?: string;
+  };
+}
 
-  readonly modelId = "see-your-agent-config";
+interface MessageWithId {
+  id?: string;
+}
 
-  readonly agentId: string;
-  readonly client: LettaClient;
+export class LettaChatModel implements LanguageModelV2 {
+  readonly specificationVersion = "v2" as const;
+  readonly provider = "letta";
+  readonly modelId = "placeholder"; // required by ai sdk v5, but we're not using it
+  readonly supportedUrls = {};
 
-  constructor(agentId: string, client: LettaClient) {
-    this.agentId = agentId;
+  private readonly client: LettaClient;
+
+  constructor(client: LettaClient) {
     this.client = client;
   }
 
-  get provider(): string {
-    return "letta.chat";
-  }
+  private getArgs(options: LanguageModelV2CallOptions) {
+    const warnings: LanguageModelV2CallWarning[] = [];
 
-  supportsUrl(url: URL): boolean {
-    return url.protocol === "https:" || url.protocol === "http:";
-  }
+    // Extract agentId from providerOptions
+    const providerOptions = (
+      options as LanguageModelV2CallOptions & {
+        providerOptions?: ProviderOptions;
+      }
+    ).providerOptions;
+    const agentId = providerOptions?.agent?.id;
 
-  private getArgs({ prompt }: Parameters<LanguageModelV1["doGenerate"]>[0]) {
-    const warnings: LanguageModelV1CallWarning[] = [];
+    if (!agentId) {
+      throw new Error(
+        "Letta provider requires an agentId in providerOptions. Usage: generateText({ model: lettaCloud(), providerOptions: { agent: { id: 'your-agent-id' } }, ... })",
+      );
+    }
 
     const baseArgs = {
-      agentId: this.agentId,
-      messages: convertToLettaMessage(prompt),
+      agentId,
+      messages: convertToLettaMessage([
+        options.prompt[options.prompt.length - 1], // backend SDK only supports one message at a time
+      ]),
     };
 
     return {
@@ -44,83 +63,83 @@ export class LettaChatModel implements LanguageModelV1 {
     };
   }
 
-  async doGenerate(
-    options: Parameters<LanguageModelV1["doGenerate"]>[0],
-  ): Promise<Awaited<ReturnType<LanguageModelV1["doGenerate"]>>> {
+  async doGenerate(options: LanguageModelV2CallOptions) {
     const { args, warnings } = this.getArgs(options);
 
     const { messages } = await this.client.agents.messages.create(
       args.agentId,
       {
-        messages: args.messages.slice(-1), // backend SDK only supports one message at a time
+        messages: args.messages,
       },
       {
         timeoutInSeconds: 1000,
       },
     );
 
-    let text: string = "";
-    let reasoning: string | undefined = undefined;
-    const toolCalls: Array<LanguageModelV1FunctionToolCall> = [];
+    const content: LanguageModelV2Content[] = [];
+    let finishReason: LanguageModelV2FinishReason = "stop";
 
     messages.forEach((message) => {
       if (message.messageType === "assistant_message") {
-        text += message.content;
+        const textContent =
+          typeof message.content === "string"
+            ? message.content
+            : message.content
+                .map((c) => (c.type === "text" ? c.text : ""))
+                .join("");
+        content.push({
+          type: "text",
+          text: textContent,
+        });
       }
 
       if (message.messageType === "tool_call_message") {
-        toolCalls.push({
-          toolCallType: "function",
+        content.push({
+          type: "tool-call",
           toolCallId: message.id,
           toolName: message.name || "",
-          args: message.toolCall.arguments || "",
+          input: message.toolCall?.arguments || "",
         });
       }
 
       if (message.messageType === "reasoning_message") {
-        reasoning += message.reasoning;
+        content.push({
+          type: "reasoning",
+          text: message.reasoning,
+          providerMetadata: {
+            reasoning: { source: (message as any).source || "" },
+          },
+        });
       }
     });
 
+    const usage: LanguageModelV2Usage = {
+      inputTokens: -1,
+      outputTokens: -1,
+      totalTokens: -1,
+    };
+
     return {
-      text,
-      reasoning,
-      toolCalls,
-      finishReason: "stop",
-      usage: {
-        promptTokens: -1,
-        completionTokens: -1,
+      content,
+      finishReason,
+      usage,
+      warnings,
+      request: {
+        body: args,
       },
-      rawCall: {
-        rawPrompt: args.messages,
-        rawSettings: {
-          agentId: args.agentId,
-        },
-      },
-      rawResponse: {
+      response: {
         body: messages,
       },
-      request: { body: JSON.stringify(args) },
-      warnings,
     };
   }
 
-  async doStream(
-    options: Parameters<LanguageModelV1["doStream"]>[0],
-  ): Promise<Awaited<ReturnType<LanguageModelV1["doStream"]>>> {
-    const { args, warnings } = this.getArgs({
-      ...options,
-      prompt: options.prompt.filter(
-        (p) => p.role !== "assistant" && p.role !== "tool",
-      ),
-    });
-
-    const body = { ...args, stream: true };
+  async doStream(options: LanguageModelV2CallOptions) {
+    const { args, warnings } = this.getArgs(options);
 
     const response = await this.client.agents.messages.createStream(
       args.agentId,
       {
-        messages: args.messages.slice(-1), // backend SDK only supports one message at a time
+        messages: args.messages,
         streamTokens: true,
       },
       {
@@ -128,77 +147,208 @@ export class LettaChatModel implements LanguageModelV1 {
       },
     );
 
-    const readableStream = new ReadableStream({
-      async pull(controller) {
-        let lastToolName = "";
-        let lastToolCallId = "";
+    const readableStream = new ReadableStream<LanguageModelV2StreamPart>({
+      async start(controller) {
+        const toolCallBuffer = new Map<
+          string,
+          {
+            toolName: string;
+            toolCallId: string;
+            accumulatedArguments: string;
+          }
+        >();
 
-        for await (const message of response) {
-          if (message.messageType === "assistant_message") {
-            let textDelta = "";
-            if (typeof message.content === "string") {
-              textDelta = message.content;
-            } else {
-              message.content.forEach((v) => {
-                if (v.type === "text") {
-                  textDelta += v.text;
+        try {
+          // Start the stream with warnings (if any)
+          controller.enqueue({
+            type: "stream-start",
+            warnings: [],
+          });
+
+          let currentTextId: string | null = null;
+          let currentReasoningId: string | null = null;
+
+          for await (const message of response) {
+            console.log("_", message);
+
+            if (
+              message.messageType === "assistant_message" &&
+              message.content
+            ) {
+              let textContent = "";
+
+              if (typeof message.content === "string") {
+                textContent = message.content;
+              } else if (Array.isArray(message.content)) {
+                textContent = message.content
+                  .filter((part) => part && part.type === "text" && part.text)
+                  .map((part) => part.text)
+                  .join("");
+              }
+
+              if (textContent) {
+                const messageId =
+                  (message as MessageWithId).id || `msg-${Date.now()}`;
+
+                // Start text block if new message
+                if (currentTextId !== messageId) {
+                  if (currentTextId) {
+                    controller.enqueue({
+                      type: "text-end",
+                      id: currentTextId,
+                    });
+                  }
+
+                  controller.enqueue({
+                    type: "text-start",
+                    id: messageId,
+                  });
+                  currentTextId = messageId;
                 }
-              });
+
+                // Send text delta
+                controller.enqueue({
+                  type: "text-delta",
+                  id: messageId,
+                  delta: textContent,
+                });
+              }
             }
 
+            // Handle reasoning messages
+            if (
+              message.messageType === "reasoning_message" &&
+              message.reasoning
+            ) {
+              let textContent = "";
+
+              if (typeof message.reasoning === "string") {
+                textContent = message.reasoning;
+              }
+
+              if (textContent) {
+                const baseId =
+                  (message as MessageWithId).id || Date.now().toString();
+                const reasoningId = `reasoning-${baseId}`;
+
+                // Start reasoning block if new message
+                if (currentReasoningId !== reasoningId) {
+                  if (currentReasoningId) {
+                    controller.enqueue({
+                      type: "reasoning-end",
+                      id: currentReasoningId,
+                    });
+                  }
+
+                  controller.enqueue({
+                    type: "reasoning-start",
+                    id: reasoningId,
+                    providerMetadata: {
+                      reasoning: { source: (message as any).source || "" },
+                    },
+                  });
+                  currentReasoningId = reasoningId;
+                }
+
+                // Send reasoning delta
+                controller.enqueue({
+                  type: "reasoning-delta",
+                  id: reasoningId,
+                  delta: textContent,
+                  providerMetadata: {
+                    reasoning: { source: message.source || "" },
+                  },
+                });
+              }
+            }
+
+            // Handle tool calls with accumulation since vercel does not accept streaming here
+            if (
+              message.messageType === "tool_call_message" &&
+              message.toolCall
+            ) {
+              const toolCallId =
+                message.toolCall.toolCallId || `call-${Date.now()}`;
+              const toolName = message.toolCall.name || "unknown_tool";
+              const argumentChunk = message.toolCall.arguments || "";
+
+              if (!toolCallBuffer.has(toolCallId)) {
+                // First chunk for this tool call
+                toolCallBuffer.set(toolCallId, {
+                  toolName,
+                  toolCallId,
+                  accumulatedArguments: argumentChunk,
+                });
+              } else {
+                // Accumulate arguments
+                const existing = toolCallBuffer.get(toolCallId)!;
+                existing.accumulatedArguments += argumentChunk;
+              }
+
+              // Try to parse accumulated arguments as JSON
+              const accumulated = toolCallBuffer.get(toolCallId)!;
+              try {
+                // Test if JSON is complete and valid
+                JSON.parse(accumulated.accumulatedArguments);
+
+                // JSON is valid - emit the complete tool call
+                controller.enqueue({
+                  type: "tool-call",
+                  toolCallId: accumulated.toolCallId,
+                  toolName: accumulated.toolName,
+                  input: accumulated.accumulatedArguments,
+                });
+
+                // Remove from buffer since it's complete
+                toolCallBuffer.delete(toolCallId);
+              } catch {
+                // JSON is still incomplete - continue accumulating
+                // Don't emit anything yet
+              }
+            }
+          }
+
+          // End current text block if exists
+          if (currentTextId) {
             controller.enqueue({
-              type: "text-delta",
-              textDelta: textDelta,
+              type: "text-end",
+              id: currentTextId,
             });
           }
 
-          if (message.messageType === "tool_call_message") {
-            if (message.toolCall.name) {
-              lastToolName = message.toolCall.name;
-            }
-
-            if (message.toolCall.toolCallId) {
-              lastToolCallId = message.toolCall.toolCallId;
-            }
+          // End current reasoning block if exists
+          if (currentReasoningId) {
             controller.enqueue({
-              type: "tool-call-delta",
-              toolCallType: "function",
-              toolCallId: lastToolCallId,
-              toolName: lastToolName,
-              argsTextDelta: message.toolCall.arguments,
+              type: "reasoning-end",
+              id: currentReasoningId,
             });
           }
 
-          if (message.messageType === "reasoning_message") {
-            let textDelta = "";
-
-            if (typeof message.reasoning === "string") {
-              textDelta = message.reasoning;
-            }
-
-            controller.enqueue({
-              type: "reasoning",
-              reasoningId: message.id,
-              textDelta: textDelta,
-              reasoning: true,
-            });
-          }
+          // Finish the stream
+          controller.enqueue({
+            type: "finish",
+            finishReason: "stop",
+            usage: {
+              inputTokens: -1,
+              outputTokens: -1,
+              totalTokens: -1,
+            },
+          });
+        } catch (error) {
+          console.error("Stream processing error:", error);
+          controller.error(error);
+        } finally {
+          controller.close();
         }
-
-        controller.close();
       },
     });
 
     return {
       stream: readableStream,
-      rawCall: {
-        rawPrompt: args.messages,
-        rawSettings: {
-          agentId: args.agentId,
-        },
-      },
-      request: { body: JSON.stringify(body) },
       warnings,
+      request: {
+        body: args,
+      },
     };
   }
 }
