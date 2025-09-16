@@ -1,41 +1,52 @@
 import {
-  LanguageModelV1,
-  LanguageModelV1CallWarning,
-  LanguageModelV1FunctionToolCall,
+  LanguageModelV2,
+  LanguageModelV2CallOptions,
+  LanguageModelV2CallWarning,
+  LanguageModelV2Content,
+  LanguageModelV2FinishReason,
+  LanguageModelV2StreamPart,
+  LanguageModelV2Usage,
 } from "@ai-sdk/provider";
 import { convertToLettaMessage } from "./convert-to-letta-message";
 import { LettaClient } from "@letta-ai/letta-client";
 
-export class LettaChatModel implements LanguageModelV1 {
-  readonly specificationVersion =
-    "v1" as LanguageModelV1["specificationVersion"];
-  readonly defaultObjectGenerationMode = "json";
-  readonly supportsImageUrls = false;
+export class LettaChatModel implements LanguageModelV2 {
+  readonly specificationVersion = "v2" as const;
+  readonly provider = "letta";
+  readonly modelId: string;
+  readonly supportedUrls = {};
 
-  readonly modelId = "see-your-agent-config";
+  private readonly client: LettaClient;
+  readonly agentId?: string;
 
-  readonly agentId: string;
-  readonly client: LettaClient;
-
-  constructor(agentId: string, client: LettaClient) {
-    this.agentId = agentId;
+  constructor(modelId: string, client: LettaClient, agentId?: string) {
+    this.modelId = modelId;
     this.client = client;
+    this.agentId = agentId;
   }
 
-  get provider(): string {
-    return "letta.chat";
-  }
+  private getArgs(options: LanguageModelV2CallOptions) {
+    const warnings: LanguageModelV2CallWarning[] = [];
 
-  supportsUrl(url: URL): boolean {
-    return url.protocol === "https:" || url.protocol === "http:";
-  }
+    // Use agentId from constructor if provided, otherwise extract from providerOptions
+    let agentId = this.agentId;
 
-  private getArgs({ prompt }: Parameters<LanguageModelV1["doGenerate"]>[0]) {
-    const warnings: LanguageModelV1CallWarning[] = [];
+    if (!agentId) {
+      const providerOptions = (options as any).providerOptions;
+      agentId = providerOptions?.agent?.id;
+    }
+
+    if (!agentId) {
+      throw new Error(
+        "Letta provider requires an agentId. Usage: lettaCloud('letta-model', { agent: { id: 'your-agent-id' } }) or generateText({ model: lettaCloud('letta-model'), providerOptions: { agent: { id: 'your-agent-id' } }, ... })",
+      );
+    }
 
     const baseArgs = {
-      agentId: this.agentId,
-      messages: convertToLettaMessage(prompt),
+      agentId,
+      messages: convertToLettaMessage([
+        options.prompt[options.prompt.length - 1], // backend SDK only supports one message at a time
+      ]),
     };
 
     return {
@@ -44,83 +55,80 @@ export class LettaChatModel implements LanguageModelV1 {
     };
   }
 
-  async doGenerate(
-    options: Parameters<LanguageModelV1["doGenerate"]>[0],
-  ): Promise<Awaited<ReturnType<LanguageModelV1["doGenerate"]>>> {
+  async doGenerate(options: LanguageModelV2CallOptions) {
     const { args, warnings } = this.getArgs(options);
 
     const { messages } = await this.client.agents.messages.create(
       args.agentId,
       {
-        messages: args.messages.slice(-1), // backend SDK only supports one message at a time
+        messages: args.messages,
       },
       {
         timeoutInSeconds: 1000,
       },
     );
 
-    let text: string = "";
-    let reasoning: string | undefined = undefined;
-    const toolCalls: Array<LanguageModelV1FunctionToolCall> = [];
+    const content: LanguageModelV2Content[] = [];
+    let finishReason: LanguageModelV2FinishReason = "stop";
 
     messages.forEach((message) => {
       if (message.messageType === "assistant_message") {
-        text += message.content;
+        const textContent =
+          typeof message.content === "string"
+            ? message.content
+            : message.content
+                .map((c) => (c.type === "text" ? c.text : ""))
+                .join("");
+        content.push({
+          type: "text",
+          text: textContent,
+        });
       }
 
       if (message.messageType === "tool_call_message") {
-        toolCalls.push({
-          toolCallType: "function",
+        content.push({
+          type: "tool-call",
           toolCallId: message.id,
           toolName: message.name || "",
-          args: message.toolCall.arguments || "",
+          input: message.toolCall?.arguments || "",
         });
       }
 
       if (message.messageType === "reasoning_message") {
-        reasoning += message.reasoning;
+        content.push({
+          type: "reasoning",
+          text: message.reasoning,
+        });
       }
     });
 
+    const usage: LanguageModelV2Usage = {
+      inputTokens: -1,
+      outputTokens: -1,
+      totalTokens: -1,
+    };
+
     return {
-      text,
-      reasoning,
-      toolCalls,
-      finishReason: "stop",
-      usage: {
-        promptTokens: -1,
-        completionTokens: -1,
+      content,
+      finishReason,
+      usage,
+      warnings,
+      request: {
+        body: args,
       },
-      rawCall: {
-        rawPrompt: args.messages,
-        rawSettings: {
-          agentId: args.agentId,
-        },
-      },
-      rawResponse: {
+      response: {
         body: messages,
       },
-      request: { body: JSON.stringify(args) },
-      warnings,
     };
   }
 
-  async doStream(
-    options: Parameters<LanguageModelV1["doStream"]>[0],
-  ): Promise<Awaited<ReturnType<LanguageModelV1["doStream"]>>> {
-    const { args, warnings } = this.getArgs({
-      ...options,
-      prompt: options.prompt.filter(
-        (p) => p.role !== "assistant" && p.role !== "tool",
-      ),
-    });
-
-    const body = { ...args, stream: true };
+  async doStream(options: LanguageModelV2CallOptions) {
+    const { args, warnings } = this.getArgs(options);
 
     const response = await this.client.agents.messages.createStream(
       args.agentId,
       {
-        messages: args.messages.slice(-1), // backend SDK only supports one message at a time
+        messages: args.messages, // getArgs now provides only the last message
         streamTokens: true,
       },
       {
@@ -128,77 +136,83 @@ export class LettaChatModel implements LanguageModelV1 {
       },
     );
 
-    const readableStream = new ReadableStream({
-      async pull(controller) {
-        let lastToolName = "";
-        let lastToolCallId = "";
+    const readableStream = new ReadableStream<LanguageModelV2StreamPart>({
+      async start(controller) {
+        try {
+          let lastToolName = "";
+          let lastToolCallId = "";
 
-        for await (const message of response) {
-          if (message.messageType === "assistant_message") {
-            let textDelta = "";
-            if (typeof message.content === "string") {
-              textDelta = message.content;
-            } else {
-              message.content.forEach((v) => {
-                if (v.type === "text") {
-                  textDelta += v.text;
-                }
+          for await (const message of response) {
+            if (message.messageType === "assistant_message") {
+              let textDelta = "";
+              if (typeof message.content === "string") {
+                textDelta = message.content;
+              } else {
+                message.content.forEach((v) => {
+                  if (v.type === "text") {
+                    textDelta += v.text;
+                  }
+                });
+              }
+
+              if (textDelta) {
+                controller.enqueue({
+                  type: "text-delta",
+                  id: message.id,
+                  delta: textDelta,
+                });
+              }
+            }
+
+            if (message.messageType === "tool_call_message") {
+              if (message.toolCall?.name) {
+                lastToolName = message.toolCall.name;
+              }
+
+              if (message.toolCall?.toolCallId) {
+                lastToolCallId = message.toolCall.toolCallId;
+              }
+
+              controller.enqueue({
+                type: "tool-call",
+                toolCallId: lastToolCallId,
+                toolName: lastToolName,
+                input: message.toolCall?.arguments || "",
               });
             }
 
-            controller.enqueue({
-              type: "text-delta",
-              textDelta: textDelta,
-            });
+            if (message.messageType === "reasoning_message") {
+              controller.enqueue({
+                type: "reasoning-delta",
+                id: message.id,
+                delta: message.reasoning,
+              });
+            }
           }
 
-          if (message.messageType === "tool_call_message") {
-            if (message.toolCall.name) {
-              lastToolName = message.toolCall.name;
-            }
-
-            if (message.toolCall.toolCallId) {
-              lastToolCallId = message.toolCall.toolCallId;
-            }
-            controller.enqueue({
-              type: "tool-call-delta",
-              toolCallType: "function",
-              toolCallId: lastToolCallId,
-              toolName: lastToolName,
-              argsTextDelta: message.toolCall.arguments,
-            });
-          }
-
-          if (message.messageType === "reasoning_message") {
-            let textDelta = "";
-
-            if (typeof message.reasoning === "string") {
-              textDelta = message.reasoning;
-            }
-
-            controller.enqueue({
-              type: "reasoning",
-              reasoningId: message.id,
-              textDelta: textDelta,
-              reasoning: true,
-            });
-          }
+          controller.enqueue({
+            type: "finish",
+            finishReason: "stop",
+            usage: {
+              inputTokens: -1,
+              outputTokens: -1,
+              totalTokens: -1,
+            },
+          });
+        } catch (error) {
+          controller.error(error);
+        } finally {
+          controller.close();
         }
-
-        controller.close();
       },
     });
 
     return {
       stream: readableStream,
-      rawCall: {
-        rawPrompt: args.messages,
-        rawSettings: {
-          agentId: args.agentId,
-        },
-      },
-      request: { body: JSON.stringify(body) },
       warnings,
+      request: {
+        body: args,
+      },
     };
   }
 }

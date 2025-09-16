@@ -1,5 +1,6 @@
 import { CoreMessage } from "ai";
 import { Message } from "@ai-sdk/ui-utils";
+import { ModelMessage } from "ai";
 
 const newAgentName = "e2e-test-agent-vercel-ai-sdk";
 const newAgentDescription =
@@ -47,7 +48,53 @@ const testMessageWithToolRole:
   | undefined = [
   {
     role: "tool",
+    content: [
+      {
+        type: "tool-result",
+        toolCallId: "test-tool-call-id",
+        toolName: "test-tool",
+        result: "Tool result",
+      },
+    ],
+  },
+];
+
+// Model message versions for AI SDK 5
+const modelTestMessage: ModelMessage[] = [
+  {
+    role: "user",
+    content: [{ type: "text", text: "Hello, who are you?" }],
+  },
+];
+
+const modelTestMessageWithAssistantRole: ModelMessage[] = [
+  {
+    role: "assistant",
+    content: [{ type: "text", text: "Hello, who are you?" }],
+  },
+];
+
+const modelTestMessageWithSystemRole: ModelMessage[] = [
+  {
+    role: "system",
     content: "Hello, who are you?",
+  },
+];
+
+const modelTestMessageWithToolRole: ModelMessage[] = [
+  {
+    role: "tool",
+    content: [
+      {
+        type: "tool-result",
+        toolCallId: "test-tool-call-id",
+        toolName: "test-tool",
+        output: {
+          type: "text",
+          value: "Tool result",
+        },
+      },
+    ],
   },
 ];
 
@@ -60,4 +107,9 @@ export {
   testMessageWithAssistantRole,
   testMessageWithSystemRole,
   testMessageWithToolRole,
+  // Model message versions
+  modelTestMessage,
+  modelTestMessageWithAssistantRole,
+  modelTestMessageWithSystemRole,
+  modelTestMessageWithToolRole,
 };

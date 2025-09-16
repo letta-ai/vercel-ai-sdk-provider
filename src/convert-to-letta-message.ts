@@ -1,39 +1,45 @@
-import {LanguageModelV1Prompt} from "@ai-sdk/provider";
-import {MessageCreate} from "@letta-ai/letta-client/api";
+import { LanguageModelV2Prompt } from "@ai-sdk/provider";
+import { MessageCreate } from "@letta-ai/letta-client/api";
 
-export function convertToLettaMessage(prompt: LanguageModelV1Prompt): MessageCreate[] {
+export function convertToLettaMessage(
+  prompt: LanguageModelV2Prompt,
+): MessageCreate[] {
+  return prompt
+    .map((message) => {
+      if (message.role === "user") {
+        const content = message.content.map((part) => {
+          switch (part.type) {
+            case "text":
+              return part.text;
+            default:
+              throw new Error(`Content type ${part.type} not supported`);
+          }
+        });
 
-    return prompt.map(message => {
-        if (message.role === 'user') {
-            const content = message.content.map(val => {
-                switch (val.type) {
-                    case 'text':
-                        return val.text
-                    default:
-                        throw new Error(`File type ${val.type} not supported`)
-                }
-            });
+        return content.map((text) => {
+          return {
+            role: "user" as const,
+            content: text,
+          };
+        });
+      }
 
-            return content.map(val => {
-                return {
-                    role: 'user' as const,
-                    content: val,
-                }
-            })
-        }
+      if (message.role === "assistant") {
+        throw new Error("Assistant role is not supported for user input");
+      }
 
-        if (message.role === 'assistant') {
-            throw new Error('Assistant role is not supported')
-        }
+      if (message.role === "tool") {
+        throw new Error("Tool role is not supported");
+      }
 
-        if (message.role === 'tool') {
-            throw new Error('Tool role is not supported')
-        }
+      if (message.role === "system") {
+        return {
+          role: "system" as const,
+          content: message.content,
+        };
+      }
 
-
-        return ({
-            role: 'system' as const,
-            content: message.content,
-        })
-    }).flat()
+      throw new Error(`Message role is not supported`);
+    })
+    .flat();
 }

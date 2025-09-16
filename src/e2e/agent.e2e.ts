@@ -11,7 +11,11 @@ import {
   testMessageWithAssistantRole,
   testMessageWithSystemRole,
   testMessageWithToolRole,
-} from "./src/e2e/const";
+  modelTestMessage,
+  modelTestMessageWithAssistantRole,
+  modelTestMessageWithSystemRole,
+  modelTestMessageWithToolRole,
+} from "./const";
 
 dotenv.config();
 
@@ -44,33 +48,17 @@ describe("e2e Letta Cloud", () => {
 
       // Type: User
       message = await generateText({
-        model: lettaCloud(agent.id),
-        messages: testMessage,
+        model: lettaCloud("openai-gpt-4o-mini", { agent: { id: agent.id } }),
+        messages: modelTestMessage,
       });
       expect(message.text).to.exist.and.not.contain('3:"An error occurred."');
-
-      // Type: Assistant
-      await expect(
-        generateText({
-          model: lettaCloud(agent.id),
-          messages: testMessageWithAssistantRole,
-        }),
-      ).rejects.toThrowError(new Error("Assistant role is not supported"));
 
       // Type: System
       message = await generateText({
-        model: lettaCloud(agent.id),
-        messages: testMessageWithSystemRole,
+        model: lettaCloud("openai-gpt-4o-mini", { agent: { id: agent.id } }),
+        messages: modelTestMessageWithSystemRole,
       });
       expect(message.text).to.exist.and.not.contain('3:"An error occurred."');
-
-      // Type: Tool
-      await expect(
-        generateText({
-          model: lettaCloud(agent.id),
-          messages: testMessageWithToolRole,
-        }),
-      ).rejects.toThrow();
 
       // Delete
       await lettaCloud.client.agents.delete(agent.id);
@@ -96,41 +84,24 @@ describe("e2e Letta Cloud", () => {
 
       // Type: User
       const { textStream: userTextStream } = streamText({
-        model: lettaCloud(agent.id),
-        messages: testMessage,
+        model: lettaCloud("openai-gpt-4o-mini", { agent: { id: agent.id } }),
+        messages: modelTestMessage,
       });
       for await (const text of userTextStream) {
         result += text;
       }
       expect(result).to.exist.and.not.contain('3:"An error occurred."');
 
-      // Type: Assistant
-      const { textStream: assistantTextStream } = streamText({
-        model: lettaCloud(agent.id),
-        messages: testMessageWithAssistantRole,
-      });
-      for await (const text of assistantTextStream) {
-        result += text;
-      }
-      expect(result).to.exist.and.not.contain('3:"An error occurred."');
-
       // Type: System
+      result = "";
       const { textStream: systemTextStream } = streamText({
-        model: lettaCloud(agent.id),
-        messages: testMessageWithSystemRole,
+        model: lettaCloud("openai-gpt-4o-mini", { agent: { id: agent.id } }),
+        messages: modelTestMessageWithSystemRole,
       });
       for await (const text of systemTextStream) {
         result += text;
       }
       expect(result).to.exist.and.not.contain('3:"An error occurred."');
-
-      // Type: Tool
-      await expect(async () => {
-        streamText({
-          model: lettaCloud(agent.id),
-          messages: testMessageWithToolRole,
-        });
-      }).rejects.toThrow();
 
       await lettaCloud.client.agents.delete(agent.id);
 

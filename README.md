@@ -35,18 +35,7 @@ Create a `.env` file and add your [API Key](https://app.letta.com/api-keys):
 ```env
 LETTA_API_KEY=your_letta_cloud_apikey
 LETTA_BASE_URL=https://api.letta.com
-```
-
-```typescript
-import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
-import { generateText } from 'ai';
-
-const { text } = await generateText({
-  model: lettaCloud('your-agent-id'),
-  prompt: 'Write a vegetarian lasagna recipe for 4 people.',
-});
-
-console.log(text);
+LETTA_AGENT_ID=your_agent_id
 ```
 
 ### 2. Local Letta Instance
@@ -55,16 +44,21 @@ For local development with Letta running on `http://localhost:8283`:
 
 ```env
 LETTA_BASE_URL=http://localhost:8283
+LETTA_AGENT_ID=your_agent_id
 ```
 
 ```typescript
-import { lettaLocal } from '@letta-ai/vercel-ai-sdk-provider';
+import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
 import { generateText } from 'ai';
 
+// Recommended pattern: explicit modelId with providerOptions
 const { text } = await generateText({
-  model: lettaLocal('your-agent-id'),
-  prompt: 'What did we discuss yesterday about the project?',
+  model: lettaCloud('your_favorite_model'),
+  prompt: 'Write a vegetarian lasagna recipe for 4 people.',
+  providerOptions: { agent: { id: 'your-agent-id' } },
 });
+
+console.log(text);
 ```
 
 ### 3. Custom Configuration
@@ -81,12 +75,64 @@ const letta = createLetta({
 });
 
 const { text } = await generateText({
-  model: letta('your-agent-id'),
+  model: letta('your_favorite_model'),
   prompt: 'Continue our conversation from last week.',
+  providerOptions: { agent: { id: 'your-agent-id' } },
 });
 ```
 
 ## Advanced Usage
+
+### Usage Patterns
+
+The provider supports multiple patterns for flexibility:
+
+```typescript
+import { lettaCloud, lettaLocal } from '@letta-ai/vercel-ai-sdk-provider';
+import { streamText, generateText } from 'ai';
+
+// Pattern 1: Explicit modelId with providerOptions (Recommended)
+const result1 = streamText({
+  model: lettaLocal('your_favorite_model'),
+  prompt: 'Write a short story about space exploration',
+  providerOptions: { agent: { id: 'your-agent-id' } },
+});
+
+// Pattern 2: Constructor with agentId
+const result2 = generateText({
+  model: lettaCloud('your_favorite_model', { agentId: 'your-agent-id' }),
+  messages: [{ role: 'user', content: 'Hello!' }],
+});
+
+// Pattern 3: Direct provider call with agent options
+const result3 = streamText({
+  model: lettaLocal('your_favorite_model'),
+  prompt: 'Continue our conversation',
+  providerOptions: { agent: { id: 'your-agent-id' } },
+});
+```
+
+```typescript
+// Use with streamText/generateText - multiple patterns available
+const result = streamText({
+  model: lettaCloud('your_favorite_model'),
+  providerOptions: { agent: { id: 'your-agent-id' } },
+  prompt: 'Write a short story about space exploration',
+});
+
+// Local development
+const localResult = streamText({
+  model: lettaLocal('your_favorite_model'),
+  providerOptions: { agent: { id: 'your-agent-id' } },
+  prompt: 'Hello, how are you?',
+});
+
+// Alternative approach with explicit options
+const directResult = streamText({
+  model: lettaCloud('your_favorite_model', { agent: { id: 'your-agent-id' } }),
+  prompt: 'Continue our conversation from yesterday',
+});
+```
 
 ### Streaming Responses
 
@@ -95,11 +141,13 @@ import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
 import { streamText } from 'ai';
 
 const { textStream } = await streamText({
-  model: lettaCloud('your-agent-id'),
-  messages: [
-    { role: 'user', content: 'Tell me a story about a robot learning to paint.' }
-  ],
-});
+  const result = streamText({
+    model: lettaCloud('your_favorite_model'),
+    providerOptions: { agent: { id: 'your-agent-id' } },
+    messages: [
+      { role: 'user', content: 'Tell me a story about a robot learning to paint.' }
+    ],
+  });
 
 for await (const textPart of textStream) {
   console.log(textPart);
@@ -123,8 +171,9 @@ console.log('Created agent:', agent.agents[0].id);
 
 // Now use the agent with AI SDK
 const { text } = await generateText({
-  model: lettaCloud(agent.agents[0].id),
-  prompt: 'Hello! I\'m excited to work with you.',
+  model: lettaCloud('your_favorite_model'),
+  providerOptions: { agentId: agent.agents[0].id },
+  prompt: 'Hello, tell me about Letta.',
 });
 
 console.log(text)
@@ -177,10 +226,16 @@ import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
 import { streamText } from 'ai';
 
 export async function POST(req: Request) {
-  const { messages, agentId } = await req.json();
+  const { messages } = await req.json();
+  const agentId = 'your-agent-id';
+
+  if (!agentId) {
+    throw new Error('LETTA_AGENT_ID environment variable is required');
+  }
 
   const result = await streamText({
-    model: lettaCloud(agentId),
+    model: lettaCloud('your_favorite_model'),
+    providerOptions: { agent: { id: agentId } },
     messages,
   });
 
@@ -214,8 +269,8 @@ interface LettaClient.Options {
 
 ### Provider Functions
 
-- `lettaCloud(agentId: string)` - Pre-configured provider for Letta Cloud
-- `lettaLocal(agentId: string)` - Pre-configured provider for local Letta instance
+- `lettaCloud(modelId?, options?)` - Pre-configured provider for Letta Cloud
+- `lettaLocal(modelId?, options?)` - Pre-configured provider for local Letta instance
 - `createLetta(options)` - Create a custom provider instance
 
 ### Utility Functions
@@ -223,6 +278,7 @@ interface LettaClient.Options {
 - `convertToAiSdkMessage(messages, options)` - Convert Letta messages to AI SDK format
 - `loadDefaultProject` - Load default project from environment
 - `loadDefaultTemplate` - Load default template from environment
+
 
 ## Troubleshooting
 

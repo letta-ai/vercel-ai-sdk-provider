@@ -1,60 +1,64 @@
-'use server';
+"use server";
 
-import {cookies} from "next/headers";
+import { cookies } from "next/headers";
 import {
-    convertToAiSdkMessage,
-    lettaCloud,
-    lettaLocal,
-    loadDefaultProject,
-    loadDefaultTemplate
+  convertToAiSdkMessage,
+  lettaCloud,
+  lettaLocal,
 } from "@letta-ai/vercel-ai-sdk-provider";
-import {Chat} from "@/app/Chat";
-import {TEST_MODE} from "@/app/env-vars";
-
+import { Chat } from "@/app/Chat";
+import { TEST_MODE } from "@/app/env-vars";
 
 async function getAgentId() {
-    const cookie = await cookies()
-    const activeAgentId = cookie.get('active-agent');
+  const cookie = await cookies();
+  const activeAgentId = cookie.get("active-agent");
 
-    if (activeAgentId) {
-        return activeAgentId.value
-    }
+  if (activeAgentId) {
+    return activeAgentId.value;
+  }
 
-    if (!loadDefaultProject) {
-        throw new Error('Missing LETTA_DEFAULT_PROJECT_ID environment variable');
-    }
-
-    if (!loadDefaultTemplate) {
-        throw new Error('Missing LETTA_DEFAULT_TEMPLATE_NAME environment variable');
-    }
-
-    let response;
-    if (TEST_MODE === 'local') {
-        console.log('Using local Letta agent:', loadDefaultTemplate);
-        response = await lettaLocal.client.templates.agents.create(loadDefaultProject, loadDefaultTemplate);
-    } else {
-        console.log('Using Cloud Letta agent:', loadDefaultTemplate);
-        response = await lettaCloud.client.templates.agents.create(loadDefaultProject, loadDefaultTemplate);
-    }
-
-    const nextActiveAgentId = response.agents[0].id;
-
-    return nextActiveAgentId;
+  // For demo purposes, use a hardcoded agent ID
+  // In production, you would create agents dynamically
+  if (TEST_MODE === "local") {
+    return "local-demo-agent-123";
+  } else {
+    return "agent-4347ca82-3af0-40ef-99a0-e6b74f84faf1";
+  }
 }
 
 async function getExistingMessages(agentId: string) {
-    return TEST_MODE === 'local' ? convertToAiSdkMessage(await lettaLocal.client.agents.messages.list(agentId), {allowMessageTypes: ['user_message', 'assistant_message']}) : convertToAiSdkMessage(await lettaCloud.client.agents.messages.list(agentId), {allowMessageTypes: ['user_message', 'assistant_message']});
+  try {
+    return TEST_MODE === "local"
+      ? convertToAiSdkMessage(
+          await lettaLocal.client.agents.messages.list(agentId),
+          { allowMessageTypes: ["user_message", "assistant_message"] },
+        )
+      : convertToAiSdkMessage(
+          await lettaCloud.client.agents.messages.list(agentId),
+          { allowMessageTypes: ["user_message", "assistant_message"] },
+        );
+  } catch (error) {
+    console.log("Error fetching messages:", error);
+    return [];
+  }
 }
 
 async function saveAgentIdCookie(agentId: string) {
-    'use server'
-    const cookie = await cookies();
-    await cookie.set('active-agent', agentId, {path: '/'});
+  "use server";
+  const cookie = await cookies();
+  await cookie.set("active-agent", agentId, { path: "/" });
 }
 
 export default async function Homepage() {
-    const agentId = await getAgentId();
-    const existingMessages = await getExistingMessages(agentId);
+  const agentId = await getAgentId();
+  console.log("agentId", agentId);
+  const existingMessages = await getExistingMessages(agentId);
 
-    return <Chat existingMessages={existingMessages} saveAgentIdCookie={saveAgentIdCookie} agentId={agentId}/>
+  return (
+    <Chat
+      existingMessages={existingMessages}
+      saveAgentIdCookie={saveAgentIdCookie}
+      agentId={agentId}
+    />
+  );
 }

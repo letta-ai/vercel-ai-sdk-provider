@@ -1,33 +1,40 @@
-import { streamText } from 'ai';
-import { lettaCloud, lettaLocal } from '@letta-ai/vercel-ai-sdk-provider';
-import {AGENT_ID, TEST_MODE} from '@/app/env-vars';
-
-// Allow streaming responses up to 30 seconds
-export const maxDuration = 30;
+import { streamText } from "ai";
+import { lettaCloud, lettaLocal } from "@letta-ai/vercel-ai-sdk-provider";
+import { AGENT_ID, TEST_MODE } from "@/app/env-vars";
 
 export async function POST(req: Request) {
-    const { messages } = await req.json();
+  const { messages, agentId } = await req.json();
 
-    if (!AGENT_ID) {
-        throw new Error('Missing LETTA_AGENT_ID environment variable');
-    }
+  // Use agentId from request body if provided, otherwise fall back to env var
+  const activeAgentId = agentId || AGENT_ID;
 
-    let result
+  if (!activeAgentId) {
+    throw new Error(
+      "Missing agent ID - provide agentId in request or set LETTA_AGENT_ID environment variable",
+    );
+  }
 
-    if (TEST_MODE === 'local') {
-        console.log('Using local Letta agent:', AGENT_ID);
-        result = streamText({
-            model: lettaLocal(AGENT_ID),
-            messages,
-        });
-    } else {
-        console.log('Using Cloud Letta agent:', AGENT_ID);
-        console.log('lettaCloud', lettaCloud(AGENT_ID));
-        result = streamText({
-            model: lettaCloud(AGENT_ID),
-            messages,
-        });
-    }
+  let result;
 
-    return result.toDataStreamResponse({ sendReasoning: true });
+  if (TEST_MODE === "local") {
+    console.log("Using local Letta agent:", activeAgentId);
+    result = streamText({
+      model: lettaLocal("openai/gpt-4o-mini"),
+      providerOptions: {
+        agent: { id: activeAgentId },
+      },
+      messages,
+    });
+  } else {
+    console.log("Using cloud Letta agent:", activeAgentId);
+    result = streamText({
+      model: lettaCloud("openai/gpt-4o-mini"),
+      providerOptions: {
+        agent: { id: activeAgentId },
+      },
+      messages,
+    });
+  }
+
+  return result.toTextStreamResponse();
 }
