@@ -37,7 +37,7 @@
     "@letta-ai/letta-client": "^0.0.68657"
   },
   "devDependencies": {
-    "@types/node": "20.17.24",
+    "@types/node": "20.19.0",
     "ai": "^5.0.44",
     "dotenv": "^17.2.0",
     "tsup": "^8",
