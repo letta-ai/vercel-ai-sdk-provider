@@ -34,7 +34,7 @@
     "@ai-sdk/provider": "^2.0.0",
     "@ai-sdk/provider-utils": "^2.2.8",
     "@ai-sdk/ui-utils": "^1.2.5",
-    "@letta-ai/letta-client": "^0.0.68655"
+    "@letta-ai/letta-client": "^0.0.68657"
   },
   "devDependencies": {
     "@types/node": "20.17.24",
