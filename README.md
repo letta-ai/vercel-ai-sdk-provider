@@ -568,6 +568,24 @@ const stream = streamText({
 });
 ```
 
+### Long-Running Executions
+
+For streaming operations that may take longer to complete, you can use the `background` option:
+
+```typescript
+// Streaming with background execution
+const stream = streamText({
+  model: lettaCloud(),
+  messages: [{ role: 'user', content: 'Process this complex task...' }],
+  providerOptions: { 
+    agent: { id: 'your-agent-id' },
+    background: true 
+  },
+});
+```
+
+**Note**: Background executions are useful for complex streaming tasks that may exceed typical request timeouts. See [Letta's long-running guide](https://docs.letta.com/guides/agents/long-running) for more details.
+
 ### When to Use Each Approach
 
 **Use `generateText` (non-streaming) when:**
