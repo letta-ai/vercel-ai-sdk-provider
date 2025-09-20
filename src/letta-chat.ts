@@ -44,7 +44,7 @@ export class LettaChatModel implements LanguageModelV2 {
       }
     ).providerOptions;
     const agentId = providerOptions?.agent?.id;
-    const backgroundMode = providerOptions?.agent?.background;
+    const background = providerOptions?.agent?.background;
 
     if (!agentId) {
       throw new Error(
@@ -54,6 +54,7 @@ export class LettaChatModel implements LanguageModelV2 {
 
     const baseArgs = {
       agentId,
+      background,
       messages: convertToLettaMessage([
         options.prompt[options.prompt.length - 1], // backend SDK only supports one message at a time
       ]),
@@ -143,6 +144,7 @@ export class LettaChatModel implements LanguageModelV2 {
       {
         messages: args.messages,
         streamTokens: true,
+        background: args.background,
       },
       {
         timeoutInSeconds: 1000,
