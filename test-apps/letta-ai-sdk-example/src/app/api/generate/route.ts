@@ -1,6 +1,5 @@
 import {
-  streamText,
-  convertToModelMessages,
+  generateText,
   extractReasoningMiddleware,
   wrapLanguageModel,
 } from "ai";
@@ -11,6 +10,8 @@ import { z } from "zod";
 export async function POST(req: Request) {
   const { messages, agentId } = await req.json();
 
+  console.log("messages", messages);
+
   // Use agentId from request body if provided, otherwise fall back to env var
   const activeAgentId = agentId || AGENT_ID;
 
@@ -19,8 +20,6 @@ export async function POST(req: Request) {
       "Missing agent ID - provide agentId in request or set LETTA_AGENT_ID environment variable",
     );
   }
-
-  const modelMessages = convertToModelMessages(messages);
 
   let result;
 
@@ -40,7 +39,7 @@ export async function POST(req: Request) {
     providerOptions: {
       agent: { id: activeAgentId },
     },
-    messages: modelMessages,
+    messages: messages,
   };
 
   if (TEST_MODE === "local") {
@@ -54,7 +53,7 @@ export async function POST(req: Request) {
         startWithReasoning: false,
       }),
     });
-    result = streamText({
+    result = generateText({
       model: wrappedModel,
       tools: commonConfig.tools,
       providerOptions: commonConfig.providerOptions,
@@ -71,7 +70,7 @@ export async function POST(req: Request) {
         startWithReasoning: false,
       }),
     });
-    result = streamText({
+    result = generateText({
       model: wrappedModel,
       tools: commonConfig.tools,
       providerOptions: commonConfig.providerOptions,
@@ -80,14 +79,31 @@ export async function POST(req: Request) {
   }
 
   try {
-    // Create the UI message stream response with both types of reasoning
-    const response = result.toUIMessageStreamResponse({
-      sendReasoning: true, // Include Letta agent reasoning
-    });
+    // Wait for the complete result and return it as a UI message response
+    const finalResult = await result;
 
-    return response;
+    // Create a UI message response similar to streaming but with complete data
+    const message = {
+      id: `msg-${Date.now()}`,
+      role: "assistant" as const,
+      content: finalResult.text,
+      experimental_data: {
+        text: finalResult.text,
+        finishReason: finalResult.finishReason,
+        usage: finalResult.usage,
+        warnings: finalResult.warnings,
+        toolCalls: finalResult.toolCalls,
+        toolResults: finalResult.toolResults,
+        reasoning: finalResult.reasoning,
+        response: finalResult.response,
+      },
+    };
+
+    return Response.json({
+      messages: [message],
+    });
   } catch (error) {
-    console.error("Error creating UI message stream response:", error);
+    console.error("Error generating text:", error);
     console.error(
       "Error details:",
       JSON.stringify(error, Object.getOwnPropertyNames(error)),
@@ -96,21 +112,27 @@ export async function POST(req: Request) {
     // Fallback without extractReasoningMiddleware if there's an issue
     console.log("Falling back to basic reasoning...");
     try {
-      const fallbackResult = streamText({
+      const fallbackResult = await generateText({
         model: TEST_MODE === "local" ? lettaLocal() : lettaCloud(),
         tools: commonConfig.tools,
         providerOptions: commonConfig.providerOptions,
-        messages: modelMessages,
-        // No experimental_transform in fallback
+        messages: messages,
       });
 
-      return fallbackResult.toUIMessageStreamResponse({
-        sendReasoning: true,
+      const message = {
+        id: `msg-${Date.now()}`,
+        role: "assistant" as const,
+        content: fallbackResult.text,
+        experimental_data: fallbackResult,
+      };
+
+      return Response.json({
+        messages: [message],
       });
     } catch (fallbackError) {
       return new Response(
         JSON.stringify({
-          error: "Failed to create UI message stream",
+          error: "Failed to generate text",
           details: error instanceof Error ? error.message : String(error),
           fallbackError:
             fallbackError instanceof Error

@@ -1,4 +1,4 @@
-const AGENT_ID = 'agent-338196a3-3a09-4766-bc09-ce56e5cc4cbd'
-const TEST_MODE: 'local' | 'cloud' = 'cloud'
+const AGENT_ID = "agent-4e0d1d73-e225-48b2-8068-b909bf2e5124";
+const TEST_MODE: "local" | "cloud" = "local";
 
-export { AGENT_ID, TEST_MODE }
+export { AGENT_ID, TEST_MODE };

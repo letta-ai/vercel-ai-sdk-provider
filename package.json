@@ -1,6 +1,6 @@
 {
   "name": "@letta-ai/vercel-ai-sdk-provider",
-  "version": "0.1.149",
+  "version": "0.2.0",
   "license": "MIT",
   "sideEffects": false,
   "main": "test-apps/letta-ai-sdk-example/node_modules/@letta-ai/vercel-ai-sdk-provider/dist/index.js",
@@ -17,10 +17,10 @@
     "type-check": "tsc --noEmit",
     "prettier-check": "prettier --check \"./**/*.ts*\"",
     "test": "npm run test:node && npm run test:e2e",
-    "test:e2e": "vitest --config vitest.e2e.config.js --run",
-    "test:e2e:local": "vitest --config vitest.e2e.local.config.js --run",
-    "test:node": "vitest --config vitest.node.config.js --run",
-    "test:node:watch": "vitest --config vitest.node.config.js"
+    "test:e2e": "vitest --config vitest.e2e.config.mjs --run",
+    "test:e2e:local": "vitest --config vitest.e2e.local.config.mjs --run",
+    "test:node": "vitest --config vitest.node.config.mjs --run",
+    "test:node:watch": "vitest --config vitest.node.config.mjs"
   },
   "exports": {
     "./package.json": "./package.json",
@@ -31,22 +31,23 @@
     }
   },
   "dependencies": {
-    "@ai-sdk/provider": "1.1.0",
-    "@ai-sdk/provider-utils": "2.2.4",
+    "@ai-sdk/provider": "^2.0.0",
+    "@ai-sdk/provider-utils": "^2.2.8",
     "@ai-sdk/ui-utils": "^1.2.5",
     "@letta-ai/letta-client": "^0.0.68660"
   },
   "devDependencies": {
-    "@types/node": "20.17.24",
-    "ai": "^4.3.19",
+    "@types/node": "20.19.0",
+    "ai": "^5.0.44",
     "dotenv": "^17.2.0",
     "tsup": "^8",
     "typescript": "5.6.3",
+    "vite": "^7.1.5",
     "vitest": "^3.1.1",
-    "zod": "3.23.8"
+    "zod": "^3.25.76"
   },
   "peerDependencies": {
-    "zod": "^3.0.0"
+    "zod": "^3.25.76"
   },
   "engines": {
     "node": ">=18"
