@@ -65,16 +65,21 @@ export class LettaChatModel implements LanguageModelV2 {
 
   async doGenerate(options: LanguageModelV2CallOptions) {
     const { args, warnings } = this.getArgs(options);
+    console.log("dogenerate args", args, options);
 
-    const { messages } = await this.client.agents.messages.create(
-      args.agentId,
-      {
-        messages: args.messages,
-      },
-      {
-        timeoutInSeconds: 1000,
-      },
-    );
+    const { messages } = await this.client.agents.messages.create(args.agentId, {
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: "The sky above the port was the color of television, tuned to a dead channel.",
+            },
+          ],
+        },
+      ],
+    });
 
     const content: LanguageModelV2Content[] = [];
     let finishReason: LanguageModelV2FinishReason = "stop";
@@ -136,6 +141,8 @@ export class LettaChatModel implements LanguageModelV2 {
   async doStream(options: LanguageModelV2CallOptions) {
     const { args, warnings } = this.getArgs(options);
 
+    console.log("args", args, options);
+
     const response = await this.client.agents.messages.createStream(
       args.agentId,
       {
@@ -169,8 +176,6 @@ export class LettaChatModel implements LanguageModelV2 {
           let currentReasoningId: string | null = null;
 
           for await (const message of response) {
-            console.log("_", message);
-
             if (
               message.messageType === "assistant_message" &&
               message.content

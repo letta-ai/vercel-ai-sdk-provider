@@ -22,14 +22,12 @@ export function createLetta(options: LettaClient.Options = {}): LettaProvider {
     ...options,
     token: options.token || process.env.LETTA_API_KEY,
     baseUrl:
-      options.baseUrl ||
-      process.env.BASE_URL_OVERRIDE ||
-      "https://api.letta.com",
+      options.baseUrl || process.env.LETTA_BASE_URL || "https://api.letta.com",
   });
 
-  console.log(client);
-
   const createLettaChatModel = (): LettaChatModel => {
+    console.log(client);
+
     return new LettaChatModel(client);
   };
 
@@ -64,5 +62,5 @@ export const lettaCloud = createLetta();
  * Letta provider instance for local development.
  */
 export const lettaLocal = createLetta({
-  baseUrl: "http://localhost:8283",
+  baseUrl: "http://localhost:3006",
 });

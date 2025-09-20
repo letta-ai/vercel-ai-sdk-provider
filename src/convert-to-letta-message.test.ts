@@ -16,8 +16,13 @@ describe("convertToLettaMessage", () => {
     ];
 
     const expected: MessageCreate[] = [
-      { role: "user", content: "Hello" },
-      { role: "user", content: "World" },
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "Hello" },
+          { type: "text", text: "World" },
+        ],
+      },
     ];
 
     expect(convertToLettaMessage(prompt)).toEqual(expected);
@@ -46,7 +51,7 @@ describe("convertToLettaMessage", () => {
     const prompt: LanguageModelV2Prompt = [
       {
         role: "assistant",
-        content: [{ type: "text", text: "Hello" }],
+        content: [{ type: "text", text: "Hello from assistant" }],
       },
     ];
 
@@ -88,6 +93,38 @@ describe("convertToLettaMessage", () => {
 
     const expected: MessageCreate[] = [
       { role: "system", content: "System message" },
+    ];
+
+    expect(convertToLettaMessage(prompt)).toEqual(expected);
+  });
+
+  it("should handle multiple user messages", () => {
+    const prompt: LanguageModelV2Prompt = [
+      {
+        role: "user",
+        content: [{ type: "text", text: "Hello" }],
+      },
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "How" },
+          { type: "text", text: "are you?" },
+        ],
+      },
+    ];
+
+    const expected: MessageCreate[] = [
+      {
+        role: "user",
+        content: [{ type: "text", text: "Hello" }],
+      },
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "How" },
+          { type: "text", text: "are you?" },
+        ],
+      },
     ];
 
     expect(convertToLettaMessage(prompt)).toEqual(expected);
