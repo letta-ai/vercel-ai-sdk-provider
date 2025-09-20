@@ -45,34 +45,16 @@ export async function POST(req: Request) {
 
   if (TEST_MODE === "local") {
     console.log("Using local Letta agent:", activeAgentId);
-    const baseModel = lettaLocal();
-    const wrappedModel = wrapLanguageModel({
-      model: baseModel,
-      middleware: extractReasoningMiddleware({
-        tagName: "thinking",
-        separator: "\n",
-        startWithReasoning: false,
-      }),
-    });
     result = streamText({
-      model: wrappedModel,
+      model: lettaLocal(),
       tools: commonConfig.tools,
       providerOptions: commonConfig.providerOptions,
       messages: commonConfig.messages,
     });
   } else {
     console.log("Using cloud Letta agent:", activeAgentId);
-    const baseModel = lettaCloud();
-    const wrappedModel = wrapLanguageModel({
-      model: baseModel,
-      middleware: extractReasoningMiddleware({
-        tagName: "thinking",
-        separator: "\n",
-        startWithReasoning: false,
-      }),
-    });
     result = streamText({
-      model: wrappedModel,
+      model: lettaCloud(),
       tools: commonConfig.tools,
       providerOptions: commonConfig.providerOptions,
       messages: commonConfig.messages,
@@ -80,7 +62,6 @@ export async function POST(req: Request) {
   }
 
   try {
-    // Create the UI message stream response with both types of reasoning
     const response = result.toUIMessageStreamResponse({
       sendReasoning: true, // Include Letta agent reasoning
     });
@@ -101,7 +82,6 @@ export async function POST(req: Request) {
         tools: commonConfig.tools,
         providerOptions: commonConfig.providerOptions,
         messages: modelMessages,
-        // No experimental_transform in fallback
       });
 
       return fallbackResult.toUIMessageStreamResponse({
