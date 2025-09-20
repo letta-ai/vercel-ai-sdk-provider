@@ -1,9 +1,4 @@
-import {
-  streamText,
-  convertToModelMessages,
-  extractReasoningMiddleware,
-  wrapLanguageModel,
-} from "ai";
+import { streamText, convertToModelMessages } from "ai";
 import { lettaCloud, lettaLocal } from "@letta-ai/vercel-ai-sdk-provider";
 import { AGENT_ID, TEST_MODE } from "@/app/env-vars";
 import { z } from "zod";
@@ -38,7 +33,7 @@ export async function POST(req: Request) {
       },
     },
     providerOptions: {
-      agent: { id: activeAgentId },
+      agent: { id: activeAgentId, background: true },
     },
     messages: modelMessages,
   };
@@ -47,17 +42,13 @@ export async function POST(req: Request) {
     console.log("Using local Letta agent:", activeAgentId);
     result = streamText({
       model: lettaLocal(),
-      tools: commonConfig.tools,
-      providerOptions: commonConfig.providerOptions,
-      messages: commonConfig.messages,
+      ...commonConfig,
     });
   } else {
     console.log("Using cloud Letta agent:", activeAgentId);
     result = streamText({
       model: lettaCloud(),
-      tools: commonConfig.tools,
-      providerOptions: commonConfig.providerOptions,
-      messages: commonConfig.messages,
+      ...commonConfig,
     });
   }
 
@@ -79,9 +70,7 @@ export async function POST(req: Request) {
     try {
       const fallbackResult = streamText({
         model: TEST_MODE === "local" ? lettaLocal() : lettaCloud(),
-        tools: commonConfig.tools,
-        providerOptions: commonConfig.providerOptions,
-        messages: modelMessages,
+        ...commonConfig,
       });
 
       return fallbackResult.toUIMessageStreamResponse({
