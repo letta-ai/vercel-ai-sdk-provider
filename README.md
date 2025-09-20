@@ -358,6 +358,64 @@ reasoningParts.forEach(reasoning => {
 });
 ```
 
+#### Distinguishing Agent vs Model Reasoning
+
+Letta provides two types of reasoning that you can distinguish in your UI:
+
+```typescript
+// Type guard for reasoning parts
+const isReasoningPart = (part: { type: string; [key: string]: unknown }) =>
+  part.type === "reasoning" && "text" in part && typeof part.text === "string";
+
+// Helper to determine reasoning source
+const getReasoningSource = (part: {
+  type: string;
+  text: string;
+  source?: string;
+  providerMetadata?: { reasoning?: { source?: string } };
+}) => {
+  const source = part.providerMetadata?.reasoning?.source || part.source;
+
+  if (source === "reasoner_model") {
+    return {
+      source: "model" as const,
+      text: part.text,
+    };
+  }
+
+  if (source === "non_reasoner_model") {
+    return {
+      source: "agent" as const,
+      text: part.text,
+    };
+  }
+
+  // Default to model reasoning if source is unclear
+  return {
+    source: "model" as const,
+    text: part.text,
+  };
+};
+
+// Usage in your UI components
+message.parts?.forEach((part) => {
+  if (isReasoningPart(part)) {
+    const { source, text } = getReasoningSource(part);
+
+    if (source === "model") {
+      console.log("🧠 Model Reasoning (from language model):", text);
+    } else if (source === "agent") {
+      console.log("🤖 Agent Reasoning (from Letta platform):", text);
+    }
+  }
+});
+```
+
+**Reasoning Types:**
+- **Model Reasoning** (`reasoner_model`): Internal thinking from the language model itself
+- **Agent Reasoning** (`non_reasoner_model`): The internal reasoning of the agent signature
+
+
 
 
 ### Message Conversion
@@ -381,32 +439,97 @@ const uiMessages = convertToAiSdkMessage(lettaMessages, {
 const modelMessages = convertToModelMessages(uiMessages);
 ```
 
-### Custom Tools and MCP
+### Working with Tools
 
-Letta agents support custom tools and MCP (Model Context Protocol). Tools are configured on the agent level in Letta, not in the AI SDK call:
+Letta agents support custom tools and MCP (Model Context Protocol). Unlike traditional AI SDK usage, tools are configured at the agent level in Letta, not passed to the AI SDK calls.
+
+#### Tool Configuration
+
+Tools are configured when creating or updating your Letta agent:
 
 ```typescript
-// Tools are configured in Letta, not in the AI SDK call
-// Works with both streamText and generateText
+import { LettaClient } from '@letta-ai/letta-client';
+
+const client = new LettaClient({
+  token: process.env.LETTA_API_KEY,
+});
+
+// Tools are configured on the agent in Letta
+const agent = await client.agents.create({
+  name: 'My Agent',
+});
+```
+
+#### Using Tools with AI SDK
+
+Once tools are configured on your agent, they work seamlessly with both streaming and non-streaming:
+
+```typescript
+// Streaming with tools
 const streamResult = streamText({
   model: lettaCloud(),
   providerOptions: {
-    agent: { id: agentId } // Agent has tools configured in Letta
+    agent: { id: agentId } // Tools are configured in your Letta agent
   },
   messages: convertToModelMessages(messages),
 });
 
+// Non-streaming with tools
 const generateResult = await generateText({
   model: lettaCloud(),
   providerOptions: {
-    agent: { id: agentId } // Same agent configuration
+    agent: { id: agentId } // Tools are configured in your Letta agent
   },
   messages: messages,
 });
+```
 
-// Access tool calls from content array
-const toolCalls = generateResult.content.filter(part => part.type === 'tool-call');
-console.log('Tool calls:', toolCalls);
+#### Accessing Tool Calls
+
+Tool calls appear in message parts and can be filtered by type:
+
+```typescript
+// Type guard for named tool parts
+const isNamedTool = (part: { type: string; [key: string]: unknown }): boolean =>
+  part.type.startsWith("tool-") && part.type !== "tool-invocation";
+
+// Filter tool parts from message parts
+const toolParts = message.parts?.filter(isNamedTool) || [];
+
+toolParts.forEach(part => {
+  console.log('Tool Type:', part.type); // e.g., "tool-call", "tool-result"
+  console.log('State:', part.state);
+  console.log('Call ID:', part.toolCallId);
+  console.log('Input:', part.input);
+  console.log('Output:', part.output);
+
+  // Handle errors if present
+  if (part.errorText) {
+    console.error('Tool Error:', part.errorText);
+  }
+});
+```
+
+#### MCP Integration
+
+Letta supports Model Context Protocol (MCP) for advanced tool integration:
+
+```typescript
+// MCP tools are configured in Letta and work automatically
+const result = streamText({
+  model: lettaCloud(),
+  providerOptions: {
+    agent: { id: agentId } // Tools are configured in your Letta agent
+  },
+  messages: convertToModelMessages(messages),
+});
+
+// MCP tool calls appear in the stream just like regular tools
+for await (const part of result.textStream) {
+  if (part.type === 'tool-call') {
+    console.log('MCP tool called:', part.toolName);
+  }
+}
 ```
 
 ## Usage Patterns
