@@ -26,8 +26,6 @@ export function createLetta(options: LettaClient.Options = {}): LettaProvider {
   });
 
   const createLettaChatModel = (): LettaChatModel => {
-    console.log(client);
-
     return new LettaChatModel(client);
   };
 
@@ -62,5 +60,5 @@ export const lettaCloud = createLetta();
  * Letta provider instance for local development.
  */
 export const lettaLocal = createLetta({
-  baseUrl: "http://localhost:3006",
+  baseUrl: "http://localhost:8283",
 });

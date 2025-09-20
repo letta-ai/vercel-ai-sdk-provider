@@ -1,9 +1,4 @@
-import {
-  streamText,
-  convertToModelMessages,
-  extractReasoningMiddleware,
-  wrapLanguageModel,
-} from "ai";
+import { streamText, convertToModelMessages } from "ai";
 import { lettaCloud, lettaLocal } from "@letta-ai/vercel-ai-sdk-provider";
 import { AGENT_ID, TEST_MODE } from "@/app/env-vars";
 import { z } from "zod";
@@ -38,49 +33,26 @@ export async function POST(req: Request) {
       },
     },
     providerOptions: {
-      agent: { id: activeAgentId },
+      agent: { id: activeAgentId, background: true },
     },
     messages: modelMessages,
   };
 
   if (TEST_MODE === "local") {
     console.log("Using local Letta agent:", activeAgentId);
-    const baseModel = lettaLocal();
-    const wrappedModel = wrapLanguageModel({
-      model: baseModel,
-      middleware: extractReasoningMiddleware({
-        tagName: "thinking",
-        separator: "\n",
-        startWithReasoning: false,
-      }),
-    });
     result = streamText({
-      model: wrappedModel,
-      tools: commonConfig.tools,
-      providerOptions: commonConfig.providerOptions,
-      messages: commonConfig.messages,
+      model: lettaLocal(),
+      ...commonConfig,
     });
   } else {
     console.log("Using cloud Letta agent:", activeAgentId);
-    const baseModel = lettaCloud();
-    const wrappedModel = wrapLanguageModel({
-      model: baseModel,
-      middleware: extractReasoningMiddleware({
-        tagName: "thinking",
-        separator: "\n",
-        startWithReasoning: false,
-      }),
-    });
     result = streamText({
-      model: wrappedModel,
-      tools: commonConfig.tools,
-      providerOptions: commonConfig.providerOptions,
-      messages: commonConfig.messages,
+      model: lettaCloud(),
+      ...commonConfig,
     });
   }
 
   try {
-    // Create the UI message stream response with both types of reasoning
     const response = result.toUIMessageStreamResponse({
       sendReasoning: true, // Include Letta agent reasoning
     });
@@ -98,10 +70,7 @@ export async function POST(req: Request) {
     try {
       const fallbackResult = streamText({
         model: TEST_MODE === "local" ? lettaLocal() : lettaCloud(),
-        tools: commonConfig.tools,
-        providerOptions: commonConfig.providerOptions,
-        messages: modelMessages,
-        // No experimental_transform in fallback
+        ...commonConfig,
       });
 
       return fallbackResult.toUIMessageStreamResponse({

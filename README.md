@@ -448,6 +448,56 @@ Tools are configured through your agent on Letta via API or UI.
 
 Once tools are configured on your agent, they work seamlessly with both streaming and non-streaming. Tool calls are handled automatically by Letta, so you don't need to define or execute tool functions in your AI SDK code.
 
+However, the Vercel AI SDK requires tool definitions in the configuration to prevent errors. You must provide placeholder tool configurations:
+
+```typescript
+import { z } from 'zod';
+
+// Use with streaming
+const streamResult = streamText({
+  model: lettaCloud(),
+  tools: {
+    web_search: {
+      description: "Search the web",
+      inputSchema: z.any(),
+      execute: async () => "Handled by Letta",
+    },
+    memory_replace: {
+      description: "Replace memory content", 
+      inputSchema: z.any(),
+      execute: async () => "Handled by Letta",
+    },
+  },
+  providerOptions: {
+    agent: { id: agentId },
+  },
+  messages: messages,
+});
+
+// Use with non-streaming
+const generateResult = await generateText({
+  model: lettaCloud(),
+  tools: {
+    web_search: {
+      description: "Search the web",
+      inputSchema: z.any(),
+      execute: async () => "Handled by Letta",
+    },
+    memory_replace: {
+      description: "Replace memory content", 
+      inputSchema: z.any(),
+      execute: async () => "Handled by Letta",
+    },
+  },
+  providerOptions: {
+    agent: { id: agentId },
+  },
+  messages: messages,
+});
+```
+
+**Note**: The actual tool execution happens in Letta - these configurations are placeholders required by the AI SDK to prevent runtime errors.
+
 #### Accessing Tool Calls
 
 Tool calls appear in message parts and can be filtered by type:
@@ -517,6 +567,24 @@ const stream = streamText({
   providerOptions: { agent: { id: 'your-agent-id' } },
 });
 ```
+
+### Long-Running Executions
+
+For streaming operations that may take longer to complete, you can use the `background` option:
+
+```typescript
+// Streaming with background execution
+const stream = streamText({
+  model: lettaCloud(),
+  messages: [{ role: 'user', content: 'Process this complex task...' }],
+  providerOptions: { 
+    agent: { id: 'your-agent-id' },
+    background: true 
+  },
+});
+```
+
+**Note**: Background executions are useful for complex streaming tasks that may exceed typical request timeouts. See [Letta's long-running guide](https://docs.letta.com/guides/agents/long-running) for more details.
 
 ### When to Use Each Approach
 

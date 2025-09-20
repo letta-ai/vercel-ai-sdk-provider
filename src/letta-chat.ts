@@ -12,8 +12,9 @@ import { LettaClient } from "@letta-ai/letta-client";
 import type { LettaMessageUnion } from "@letta-ai/letta-client/api";
 
 interface ProviderOptions {
-  agent?: {
+  agent: {
     id?: string;
+    background?: boolean;
   };
 }
 
@@ -43,6 +44,7 @@ export class LettaChatModel implements LanguageModelV2 {
       }
     ).providerOptions;
     const agentId = providerOptions?.agent?.id;
+    const background = providerOptions?.agent?.background;
 
     if (!agentId) {
       throw new Error(
@@ -52,6 +54,7 @@ export class LettaChatModel implements LanguageModelV2 {
 
     const baseArgs = {
       agentId,
+      background,
       messages: convertToLettaMessage([
         options.prompt[options.prompt.length - 1], // backend SDK only supports one message at a time
       ]),
@@ -65,21 +68,16 @@ export class LettaChatModel implements LanguageModelV2 {
 
   async doGenerate(options: LanguageModelV2CallOptions) {
     const { args, warnings } = this.getArgs(options);
-    console.log("dogenerate args", args, options);
 
-    const { messages } = await this.client.agents.messages.create(args.agentId, {
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: "The sky above the port was the color of television, tuned to a dead channel.",
-            },
-          ],
-        },
-      ],
-    });
+    const { messages } = await this.client.agents.messages.create(
+      args.agentId,
+      {
+        messages: args.messages,
+      },
+      {
+        timeoutInSeconds: 1000,
+      },
+    );
 
     const content: LanguageModelV2Content[] = [];
     let finishReason: LanguageModelV2FinishReason = "stop";
@@ -141,13 +139,12 @@ export class LettaChatModel implements LanguageModelV2 {
   async doStream(options: LanguageModelV2CallOptions) {
     const { args, warnings } = this.getArgs(options);
 
-    console.log("args", args, options);
-
     const response = await this.client.agents.messages.createStream(
       args.agentId,
       {
         messages: args.messages,
         streamTokens: true,
+        background: args.background,
       },
       {
         timeoutInSeconds: 1000,
