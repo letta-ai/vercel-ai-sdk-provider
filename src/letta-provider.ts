@@ -26,8 +26,6 @@ export function createLetta(options: LettaClient.Options = {}): LettaProvider {
   });
 
   const createLettaChatModel = (): LettaChatModel => {
-    console.log(client);
-
     return new LettaChatModel(client);
   };
 
