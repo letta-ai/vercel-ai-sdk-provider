@@ -45,12 +45,14 @@ export LETTA_BASE_URL=https://api.letta.com  # Optional
 
 ### 2. Basic Usage
 
+#### Non-Streaming Text Generation
+
 ```typescript
 import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
 import { generateText } from 'ai';
 
 const result = await generateText({
-  model: lettaCloud(), // Model is configured in your Letta agent
+  model: lettaCloud(), // Model configuration (LLM, temperature, etc.) is managed through your Letta agent
   providerOptions: {
     agent: { id: 'your-agent-id' }
   },
@@ -60,14 +62,14 @@ const result = await generateText({
 console.log(result.text);
 ```
 
-### 3. Streaming Responses
+#### Streaming Responses
 
 ```typescript
 import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
 import { streamText } from 'ai';
 
 const result = streamText({
-  model: lettaCloud(),
+  model: lettaCloud(), // Model configuration (LLM, temperature, etc.) is managed through your Letta agent
   providerOptions: {
     agent: { id: 'your-agent-id' }
   },
@@ -98,7 +100,7 @@ for await (const textPart of result.textStream) {
 import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
 
 // Uses LETTA_API_KEY and LETTA_BASE_URL from environment
-const model = lettaCloud();
+const model = lettaCloud(); // Model configuration (LLM, temperature, etc.) is managed through your Letta agent
 ```
 
 #### Local Letta Instance
@@ -121,7 +123,7 @@ export LETTA_BASE_URL=http://localhost:8283
 ```typescript
 import { lettaLocal } from '@letta-ai/vercel-ai-sdk-provider';
 
-const model = lettaLocal();
+const model = lettaLocal(); // Model configuration (LLM, temperature, etc.) is managed through your Letta agent
 ```
 
 #### Custom Configuration
@@ -134,7 +136,7 @@ const letta = createLetta({
   token: 'your-access-token'
 });
 
-const model = letta();
+const model = letta(); // Model configuration (LLM, temperature, etc.) is managed through your Letta agent
 ```
 
 ## Working with Letta Agents
@@ -177,10 +179,10 @@ const uiMessages = convertToAiSdkMessage(lettaMessages);
 
 ## React/Next.js Integration
 
-### API Route
+### Streaming API Route
 
 ```typescript
-// app/api/chat/route.ts
+// app/api/chat/route.ts - For real-time streaming with useChat
 import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
 import { streamText, convertToModelMessages } from 'ai';
 
@@ -205,7 +207,9 @@ export async function POST(req: Request) {
 }
 ```
 
-### Chat Component
+
+
+### Streaming Chat Component (with useChat)
 
 ```typescript
 'use client';
@@ -219,7 +223,7 @@ interface ChatProps {
   existingMessages?: UIMessage[];
 }
 
-export function Chat({ agentId, existingMessages = [] }: ChatProps) {
+export function StreamingChat({ agentId, existingMessages = [] }: ChatProps) {
   const [input, setInput] = useState('');
 
   const { messages, sendMessage, status } = useChat({
@@ -277,13 +281,15 @@ export function Chat({ agentId, existingMessages = [] }: ChatProps) {
 }
 ```
 
+
+
 ### Server Component (Next.js App Router)
 
 ```typescript
-// app/page.tsx
+// app/page.tsx - Streaming chat page
 import { LettaClient } from '@letta-ai/letta-client';
 import { convertToAiSdkMessage } from '@letta-ai/vercel-ai-sdk-provider';
-import { Chat } from './Chat';
+import { StreamingChat } from './StreamingChat';
 
 export default async function HomePage() {
   const agentId = process.env.LETTA_AGENT_ID;
@@ -302,8 +308,8 @@ export default async function HomePage() {
 
   return (
     <div>
-      <h1>Chat with Letta Agent</h1>
-      <Chat
+      <h1>Streaming Chat with Letta Agent</h1>
+      <StreamingChat
         agentId={agentId}
         existingMessages={existingMessages}
       />
@@ -312,11 +318,15 @@ export default async function HomePage() {
 }
 ```
 
+
+
 ## Advanced Features
 
 ### Reasoning Support
 
-Enable AI reasoning in your responses:
+Both `streamText` and `generateText` support AI reasoning tokens:
+
+#### Streaming with Reasoning
 
 ```typescript
 const result = streamText({
@@ -330,6 +340,25 @@ return result.toUIMessageStreamResponse({
   sendReasoning: true,
 });
 ```
+
+#### Non-Streaming with Reasoning
+
+```typescript
+const result = await generateText({
+  model: lettaCloud(),
+  providerOptions: { agent: { id: agentId } },
+  messages: convertToModelMessages(messages),
+});
+
+// generateText inherently includes `reasoning`
+// https://ai-sdk.dev/docs/ai-sdk-core/generating-text
+const reasoningParts = result.content.filter(part => part.type === 'reasoning');
+reasoningParts.forEach(reasoning => {
+  console.log('AI thinking:', reasoning.text);
+});
+```
+
+
 
 ### Message Conversion
 
@@ -358,25 +387,64 @@ Letta agents support custom tools and MCP (Model Context Protocol). Tools are co
 
 ```typescript
 // Tools are configured in Letta, not in the AI SDK call
-const result = streamText({
+// Works with both streamText and generateText
+const streamResult = streamText({
   model: lettaCloud(),
   providerOptions: {
     agent: { id: agentId } // Agent has tools configured in Letta
   },
   messages: convertToModelMessages(messages),
 });
+
+const generateResult = await generateText({
+  model: lettaCloud(),
+  providerOptions: {
+    agent: { id: agentId } // Same agent configuration
+  },
+  messages: messages,
+});
+
+// Access tool calls from content array
+const toolCalls = generateResult.content.filter(part => part.type === 'tool-call');
+console.log('Tool calls:', toolCalls);
 ```
 
 ## Usage Patterns
 
 ### Using Provider Options (Recommended)
 
+Both streaming and non-streaming approaches use the same provider pattern:
+
 ```typescript
+// Non-streaming
 const result = await generateText({
   model: lettaCloud(),
   messages: [{ role: 'user', content: 'Hello!' }],
   providerOptions: { agent: { id: 'your-agent-id' } },
 });
+
+// Streaming
+const stream = streamText({
+  model: lettaCloud(),
+  messages: [{ role: 'user', content: 'Hello!' }],
+  providerOptions: { agent: { id: 'your-agent-id' } },
+});
+```
+
+### When to Use Each Approach
+
+**Use `generateText` (non-streaming) when:**
+- You need complete response before proceeding
+- Building batch processing or automation
+- You want to analyze the full response (tokens, reasoning, tools)
+- Using custom fetch or server-side processing
+
+**Use `streamText` (streaming) when:**
+- Building real-time chat interfaces
+- You want immediate user feedback
+- Using `useChat` or similar AI SDK UI hooks
+- Building interactive conversational experiences
+
 ```
 
 ## API Reference

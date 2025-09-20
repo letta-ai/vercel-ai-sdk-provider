@@ -6,11 +6,14 @@ This is a Next.js test application for the Letta AI SDK Provider with AI SDK 5.0
 
 - 🤖 Chat interface with Letta agents
 - 🔄 Real-time streaming responses
+- ⚡ Non-streaming `generateText` with custom fetch
 - 💾 Message persistence with cookies
-
+- 🧠 Reasoning token support and display
+- 🔧 Tool call visualization
+- 📊 Token usage statistics
 - 📱 Responsive design
 - ⚡ Built with Next.js 15 and React 19
-- 🚀 Custom chat implementation
+- 🚀 Custom chat and generate implementations
 
 ## Setup
 
@@ -94,24 +97,35 @@ The app uses cookies to persist the active agent ID. You can:
 
 ### API Routes
 
-- **`/api/chat`**: Handles chat messages with streaming responses
+- **`/api/chat`**: Handles chat messages with streaming responses (`streamText`)
+- **`/api/generate`**: Handles non-streaming text generation (`generateText`)
 
 ### How It Works
 
 1. **Server Side**: Loads existing messages and agent configuration
 2. **Client Side**: Renders chat interface and handles user interactions
-3. **API Route**: Processes messages through Letta provider
-4. **Streaming**: Real-time response streaming with error handling
+3. **API Routes**: Process messages through Letta provider with two approaches:
+   - **Streaming**: Real-time response streaming via `streamText`
+   - **Generate**: Complete responses via `generateText`
 
 ### Current Implementation
 
-The current `Chat.tsx` uses a custom implementation that handles:
+The app includes two main interfaces:
 
+#### Streaming Chat (`Chat.tsx`)
+Uses `useChat` hook with `streamText` for real-time streaming:
 - Real-time streaming responses from Letta agents
 - Message state management with React hooks
 - Error handling and user feedback
 - Loading states and progress indicators
-- Clean, responsive UI with Tailwind CSS
+
+#### Generate Interface (`generate/GenerateClient.tsx`)
+Uses custom fetch with `generateText` for complete responses:
+- Non-streaming complete text generation
+- Custom state management with TypeScript interfaces
+- Direct `doGenerate` method testing
+- Detailed response visualization (reasoning, tool calls, usage stats)
+- Error handling with custom fetch implementation
 
 ## Troubleshooting
 
@@ -167,7 +181,7 @@ NODE_ENV=development
 
 #### POST `/api/chat`
 
-Send a message to the chat API.
+Send a message to the streaming chat API using `streamText`.
 
 **Request:**
 ```json
@@ -180,13 +194,53 @@ Send a message to the chat API.
 ```
 
 **Response:**
-- Streaming text response
-- Handles Letta agent interactions
-- Returns assistant messages and tool calls
+- Streaming text response (UI Message Stream Protocol)
+- Real-time assistant messages and tool calls
+- Reasoning tokens (if supported by model)
+
+#### POST `/api/generate`
+
+Send a message to the non-streaming generate API using `generateText`.
+
+**Request:**
+```json
+{
+  "messages": [
+    { "role": "user", "content": "Hello!" }
+  ],
+  "agentId": "your-agent-id"
+}
+```
+
+**Response:**
+```json
+{
+  "messages": [
+    {
+      "id": "msg-123456789",
+      "role": "assistant",
+      "content": "Generated response text",
+      "experimental_data": {
+        "text": "Generated response text",
+        "finishReason": "stop",
+        "usage": {
+          "inputTokens": 15,
+          "outputTokens": 42,
+          "totalTokens": 57
+        },
+        "toolCalls": [...],
+        "toolResults": [...],
+        "reasoning": [...],
+        "warnings": [...]
+      }
+    }
+  ]
+}
+```
 
 ## Examples
 
-### Basic Usage
+### Streaming Chat with `streamText`
 
 ```typescript
 import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
@@ -201,6 +255,34 @@ const result = streamText({
     { role: 'user', content: 'Hello!' }
   ]
 });
+
+// Return streaming response
+return result.toUIMessageStreamResponse({
+  sendReasoning: true,
+});
+```
+
+### Non-Streaming Generation with `generateText`
+
+```typescript
+import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
+import { generateText } from 'ai';
+
+const result = await generateText({
+  model: lettaCloud(),
+  providerOptions: {
+    agent: { id: 'your-agent-id' }
+  },
+  messages: [
+    { role: 'user', content: 'Hello!' }
+  ]
+});
+
+// Access complete response
+console.log(result.text);
+console.log(result.usage);
+console.log(result.toolCalls);
+console.log(result.reasoning);
 ```
 
 ### With Custom Configuration
@@ -222,13 +304,27 @@ const result = streamText({
 ```
 src/
 ├── app/
-│   ├── api/chat/route.ts      # Chat API endpoint
-│   ├── Chat.tsx               # Main chat component (custom implementation)
-│   ├── page.tsx               # Home page
-│   ├── layout.tsx             # App layout
-│   └── env-vars.ts            # Environment variables
+│   ├── api/
+│   │   ├── chat/route.ts          # Streaming chat API (streamText)
+│   │   └── generate/route.ts      # Non-streaming generate API (generateText)
+│   ├── generate/
+│   │   ├── page.tsx               # Generate page wrapper
+│   │   └── GenerateClient.tsx     # Generate interface (custom fetch)
+│   ├── Chat.tsx                   # Main chat component (useChat hook)
+│   ├── page.tsx                   # Home page
+│   ├── layout.tsx                 # App layout
+│   └── env-vars.ts                # Environment variables
 └── ...
 ```
+
+### Testing Both Approaches
+
+The app provides two interfaces to test different AI SDK patterns:
+
+1. **Main Chat (`/`)**: Uses `useChat` hook with `streamText` for real-time streaming
+2. **Generate Page (`/generate`)**: Uses custom fetch with `generateText` for complete responses
+
+Both interfaces test the same `doGenerate` method in the Letta provider but demonstrate different integration patterns with the AI SDK.
 
 ### Scripts
 
