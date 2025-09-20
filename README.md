@@ -212,6 +212,7 @@ export async function POST(req: Request) {
 ### Streaming Chat Component (with useChat)
 
 ```typescript
+// app/Chat.tsx
 'use client';
 
 import { useChat } from '@ai-sdk/react';
@@ -280,10 +281,6 @@ export function StreamingChat({ agentId, existingMessages = [] }: ChatProps) {
   );
 }
 ```
-
-
-
-### Server Component (Next.js App Router)
 
 ```typescript
 // app/page.tsx - Streaming chat page
@@ -445,44 +442,11 @@ Letta agents support custom tools and MCP (Model Context Protocol). Unlike tradi
 
 #### Tool Configuration
 
-Tools are configured when creating or updating your Letta agent:
-
-```typescript
-import { LettaClient } from '@letta-ai/letta-client';
-
-const client = new LettaClient({
-  token: process.env.LETTA_API_KEY,
-});
-
-// Tools are configured on the agent in Letta
-const agent = await client.agents.create({
-  name: 'My Agent',
-});
-```
+Tools are configured through your agent on Letta via API or UI.
 
 #### Using Tools with AI SDK
 
-Once tools are configured on your agent, they work seamlessly with both streaming and non-streaming:
-
-```typescript
-// Streaming with tools
-const streamResult = streamText({
-  model: lettaCloud(),
-  providerOptions: {
-    agent: { id: agentId } // Tools are configured in your Letta agent
-  },
-  messages: convertToModelMessages(messages),
-});
-
-// Non-streaming with tools
-const generateResult = await generateText({
-  model: lettaCloud(),
-  providerOptions: {
-    agent: { id: agentId } // Tools are configured in your Letta agent
-  },
-  messages: messages,
-});
-```
+Once tools are configured on your agent, they work seamlessly with both streaming and non-streaming. Tool calls are handled automatically by Letta, so you don't need to define or execute tool functions in your AI SDK code.
 
 #### Accessing Tool Calls
 
