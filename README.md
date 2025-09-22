@@ -635,8 +635,10 @@ const stream = streamText({
   model: lettaCloud(),
   messages: [{ role: 'user', content: 'Process this complex task...' }],
   providerOptions: {
-    agent: { id: 'your-agent-id' },
-    background: true
+    agent: {
+      id: 'your-agent-id',
+      background: true
+    },
     // See more available request params here:
     // https://docs.letta.com/api-reference/agents/messages/create-stream
   },
@@ -676,20 +678,23 @@ const stream = streamText({
 ### Configuration Options
 
 ```typescript
-interface LettaProviderOptions {
-  baseUrl?: string;     // Custom Letta instance URL
-  token?: string;       // API token/key
-  project?: string;     // Your project slug
-}
-
 interface ProviderOptions {
+  // https://docs.letta.com/api-reference/agents/messages/create-stream
   agent: {
-    id: string;         // Agent ID (required via providerOptions)
+    id?: string;
+    background?: boolean;
+    maxSteps?: number;
+    useAssistantMessage?: boolean;
+    assistantMessageToolName?: string;
+    assistantMessageToolKwarg?: string;
+    includeReturnMessageTypes?: MessageType[] | null;
+    enableThinking?: string;
+    streamTokens?: boolean;
+    includePings?: boolean;
   };
+  timeoutInSeconds?: number;
 }
 ```
-
-
 
 ## Troubleshooting
 
