@@ -73,6 +73,7 @@ export default function GenerateClient() {
     setError(null);
 
     try {
+      // useChat is not available for generateText
       const response = await fetch("/api/generate", {
         method: "POST",
         headers: {

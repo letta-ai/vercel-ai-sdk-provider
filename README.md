@@ -10,6 +10,21 @@ The official Vercel AI SDK provider for [Letta](https://www.letta.com) - the pla
 
 ![Platform Overview](https://prod.ferndocs.com/_next/image?url=https%3A%2F%2Ffiles.buildwithfern.com%2Fhttps%3A%2F%2Fletta.docs.buildwithfern.com%2F2025-08-18T18%3A23%3A54.989Z%2Fimages%2Fplatform_overview.png&w=3840&q=75)
 
+## Letta Provider Features for Vercel AI SDK v5
+
+- **🤖 Agent-Based Architecture**: Work directly with Letta agents that maintain persistent memory and state
+- **💬 Streaming & Non-Streaming Support**:
+  - AI SDK Core: `streamText()`, `generateText()`
+  - AI SDK UI: `useChat()`
+- **🧠 AI Reasoning Tokens**: Access to both agent-level and model-level reasoning with source attribution
+- **🛠️ Tool Integration**: Support for agent-configured tools and MCP (Model Context Protocol)
+- **⏱️ Configurable Timeouts**: Custom timeout settings for long-running agent operations
+- **🔄 Message Conversion**: Built-in utilities to convert between Letta and AI SDK message formats
+- **🎯 Provider Options**: Letta-specific configuration through `providerOptions.agent`
+- **📡 Real-time Features**: Support for background processing, pings, and multi-step agent workflows
+- **🔗 Cloud & Local Support**: Compatible with both Letta Cloud and self-hosted Letta instances
+- **⚡ React Integration**: Optimized for Next.js and React applications with `useChat` hook support
+
 ## Installation
 
 ```bash
@@ -45,7 +60,7 @@ export LETTA_BASE_URL=https://api.letta.com  # Optional
 
 ### 2. Basic Usage
 
-#### Non-Streaming Text Generation
+#### Send Message - Non-Streaming Text Generation
 
 ```typescript
 import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
@@ -62,7 +77,7 @@ const result = await generateText({
 console.log(result.text);
 ```
 
-#### Streaming Responses
+#### Send Message - Streaming Responses
 
 ```typescript
 import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
@@ -82,6 +97,46 @@ for await (const textPart of result.textStream) {
   console.log(textPart);
 }
 ```
+
+### 3. Utilize Letta-Specific Send Message Parameters (Advanced)
+**Send Message:**
+Use `providerOptions.agent` to configure non-streaming message creation with Letta agents.
+Documentation: https://docs.letta.com/api-reference/agents/messages/create
+
+**Send Message Streaming:**
+Use `providerOptions.agent` to configure streaming message creation with Letta agents.
+Documentation: https://docs.letta.com/api-reference/agents/messages/create-stream
+
+**Timeout Configuration:**
+Use `providerOptions.timeoutInSeconds` to set the maximum wait time for agent responses. This is especially important for long-running agent operations or when working with complex reasoning chains.
+
+```typescript
+import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
+import { streamText } from 'ai';
+
+const result = streamText({
+  model: lettaCloud(), // Model configuration (LLM, temperature, etc.) is managed through your Letta agent
+  providerOptions: {
+    agent: {
+      id: 'your-agent-id',
+      maxSteps: 100,
+      background: true,
+      includePings: true,
+      // See more available request params here:
+      // https://docs.letta.com/api-reference/agents/messages/create-stream
+    },
+    timeoutInSeconds: 300 // The maximum time to wait for a response in seconds (default: 1000)
+  },
+  messages: [
+    { role: 'user', content: 'Tell me a story about a robot learning to paint.' }
+  ],
+});
+
+for await (const textPart of result.textStream) {
+  console.log(textPart);
+}
+```
+
 
 ## Configuration
 
@@ -456,6 +511,7 @@ import { z } from 'zod';
 // Use with streaming
 const streamResult = streamText({
   model: lettaCloud(),
+  // Provide placeholder tool configurations to prevent bad AI SDK tool message errors
   tools: {
     web_search: {
       description: "Search the web",
@@ -463,7 +519,7 @@ const streamResult = streamText({
       execute: async () => "Handled by Letta",
     },
     memory_replace: {
-      description: "Replace memory content", 
+      description: "Replace memory content",
       inputSchema: z.any(),
       execute: async () => "Handled by Letta",
     },
@@ -478,13 +534,14 @@ const streamResult = streamText({
 const generateResult = await generateText({
   model: lettaCloud(),
   tools: {
+    // Provide placeholder tool configurations to prevent bad AI SDK tool message errors
     web_search: {
       description: "Search the web",
       inputSchema: z.any(),
       execute: async () => "Handled by Letta",
     },
     memory_replace: {
-      description: "Replace memory content", 
+      description: "Replace memory content",
       inputSchema: z.any(),
       execute: async () => "Handled by Letta",
     },
@@ -546,7 +603,7 @@ for await (const part of result.textStream) {
 }
 ```
 
-## Usage Patterns
+## Example Usage Patterns
 
 ### Using Provider Options (Recommended)
 
@@ -577,9 +634,11 @@ For streaming operations that may take longer to complete, you can use the `back
 const stream = streamText({
   model: lettaCloud(),
   messages: [{ role: 'user', content: 'Process this complex task...' }],
-  providerOptions: { 
+  providerOptions: {
     agent: { id: 'your-agent-id' },
-    background: true 
+    background: true
+    // See more available request params here:
+    // https://docs.letta.com/api-reference/agents/messages/create-stream
   },
 });
 ```
