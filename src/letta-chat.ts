@@ -9,13 +9,41 @@ import {
 } from "@ai-sdk/provider";
 import { convertToLettaMessage } from "./convert-to-letta-message";
 import { LettaClient } from "@letta-ai/letta-client";
-import type { LettaMessageUnion } from "@letta-ai/letta-client/api";
+
+type MessageType =
+  | "system_message"
+  | "user_message"
+  | "reasoning_message"
+  | "hidden_reasoning_message"
+  | "tool_call_message"
+  | "tool_return_message"
+  | "assistant_message"
+  | "approval_request_message"
+  | "approval_response_message";
 
 interface ProviderOptions {
+  // https://docs.letta.com/api-reference/agents/messages/create-stream
   agent: {
     id?: string;
     background?: boolean;
+    maxSteps?: number;
+    useAssistantMessage?: boolean;
+    assistantMessageToolName?: string;
+    assistantMessageToolKwarg?: string;
+    includeReturnMessageTypes?: MessageType[] | null;
+    enableThinking?: string; // Reflects sdk
+    streamTokens?: boolean;
+    includePings?: boolean;
   };
+  timeoutInSeconds?: number;
+}
+
+function filterDefinedProperties<T extends Record<string, any>>(
+  obj: T,
+): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([_, value]) => value !== undefined),
+  ) as Partial<T>;
 }
 
 interface MessageWithId {
@@ -37,14 +65,14 @@ export class LettaChatModel implements LanguageModelV2 {
   private getArgs(options: LanguageModelV2CallOptions) {
     const warnings: LanguageModelV2CallWarning[] = [];
 
-    // Extract agentId from providerOptions
     const providerOptions = (
       options as LanguageModelV2CallOptions & {
         providerOptions?: ProviderOptions;
       }
     ).providerOptions;
-    const agentId = providerOptions?.agent?.id;
-    const background = providerOptions?.agent?.background;
+
+    const { id: agentId, ...agentConfig } = providerOptions?.agent || {};
+    const timeoutInSeconds = providerOptions?.timeoutInSeconds;
 
     if (!agentId) {
       throw new Error(
@@ -54,10 +82,11 @@ export class LettaChatModel implements LanguageModelV2 {
 
     const baseArgs = {
       agentId,
-      background,
+      ...agentConfig,
       messages: convertToLettaMessage([
         options.prompt[options.prompt.length - 1], // backend SDK only supports one message at a time
       ]),
+      ...(timeoutInSeconds && { timeoutInSeconds }),
     };
 
     return {
@@ -69,13 +98,23 @@ export class LettaChatModel implements LanguageModelV2 {
   async doGenerate(options: LanguageModelV2CallOptions) {
     const { args, warnings } = this.getArgs(options);
 
+    const createOptions = {
+      messages: args.messages,
+      ...filterDefinedProperties({
+        maxSteps: args.maxSteps,
+        useAssistantMessage: args.useAssistantMessage,
+        assistantMessageToolName: args.assistantMessageToolName,
+        assistantMessageToolKwarg: args.assistantMessageToolKwarg,
+        includeReturnMessageTypes: args.includeReturnMessageTypes ?? undefined,
+        enableThinking: args.enableThinking,
+      }),
+    };
+
     const { messages } = await this.client.agents.messages.create(
       args.agentId,
+      createOptions,
       {
-        messages: args.messages,
-      },
-      {
-        timeoutInSeconds: 1000,
+        timeoutInSeconds: args.timeoutInSeconds ?? 1000,
       },
     );
 
@@ -139,15 +178,26 @@ export class LettaChatModel implements LanguageModelV2 {
   async doStream(options: LanguageModelV2CallOptions) {
     const { args, warnings } = this.getArgs(options);
 
+    const streamOptions = {
+      messages: args.messages,
+      ...filterDefinedProperties({
+        background: args.background,
+        maxSteps: args.maxSteps,
+        useAssistantMessage: args.useAssistantMessage,
+        assistantMessageToolName: args.assistantMessageToolName,
+        assistantMessageToolKwarg: args.assistantMessageToolKwarg,
+        includeReturnMessageTypes: args.includeReturnMessageTypes ?? undefined,
+        enableThinking: args.enableThinking,
+        streamTokens: args.streamTokens,
+        includePings: args.includePings,
+      }),
+    };
+
     const response = await this.client.agents.messages.createStream(
       args.agentId,
+      streamOptions,
       {
-        messages: args.messages,
-        streamTokens: true,
-        background: args.background,
-      },
-      {
-        timeoutInSeconds: 1000,
+        timeoutInSeconds: args.timeoutInSeconds ?? 1000,
       },
     );
 
