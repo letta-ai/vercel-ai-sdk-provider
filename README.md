@@ -515,6 +515,14 @@ Letta agents support custom tools and MCP (Model Context Protocol). Unlike tradi
 
 Tools are configured through your agent on Letta via API or UI.
 
+#### Reading files
+
+When agents perform filesystem operations, the results can be **rendered through tool calls**.
+
+The filesystem is **agent-managed**, so you don't need special functions with the AI SDK to access it. Once you attach a folder to an agent, the agent can automatically use filesystem tools (`open_file`, `grep_file`, `search_file`) to browse the files to search for information.
+
+See guide [here](https://docs.letta.com/guides/agents/filesystem).
+
 #### Using Tools with AI SDK
 
 Once tools are configured on your agent, they work seamlessly with both streaming and non-streaming. Tool calls are handled automatically by Letta, so you don't need to define or execute tool functions in your AI SDK code.
@@ -708,22 +716,25 @@ const stream = streamText({
 ### Configuration Options
 
 ```typescript
-interface LettaClient {
-  baseUrl?: string;     // Custom Letta instance URL
-  token?: string;       // API token/key
-  project?: string;     // Your project slug
-}
-
 interface ProviderOptions {
+  // https://docs.letta.com/api-reference/agents/messages/create-stream
   letta: {
-    agent: {
-      id: string;         // Agent ID (required via providerOptions)
+   agent: {
+      id?: string;
+      background?: boolean;
+      maxSteps?: number;
+      useAssistantMessage?: boolean;
+      assistantMessageToolName?: string;
+      assistantMessageToolKwarg?: string;
+      includeReturnMessageTypes?: MessageType[] | null;
+      enableThinking?: string;
+      streamTokens?: boolean;
+      includePings?: boolean;
     };
+    timeoutInSeconds?: number;
   }
 }
 ```
-
-
 
 ## Troubleshooting
 
