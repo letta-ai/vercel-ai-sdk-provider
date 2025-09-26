@@ -49,14 +49,6 @@ function filterDefinedProperties<T extends Record<string, any>>(
   ) as Partial<T>;
 }
 
-function filterDefinedProperties<T extends Record<string, any>>(
-  obj: T,
-): Partial<T> {
-  return Object.fromEntries(
-    Object.entries(obj).filter(([_, value]) => value !== undefined),
-  ) as Partial<T>;
-}
-
 interface MessageWithId {
   id?: string;
 }
