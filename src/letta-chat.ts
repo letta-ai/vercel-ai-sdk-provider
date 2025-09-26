@@ -79,7 +79,7 @@ export class LettaChatModel implements LanguageModelV2 {
 
     if (!agentId) {
       throw new Error(
-        "Letta provider requires an agentId in providerOptions. Usage: generateText({ model: lettaCloud(), providerOptions: { agent: { id: 'your-agent-id' } }, ... })",
+        "Letta provider requires an agentId in providerOptions. Usage: generateText({ model: lettaCloud(), providerOptions: { letta: { agent: { id: 'your-agent-id' } } }, ... })",
       );
     }
 

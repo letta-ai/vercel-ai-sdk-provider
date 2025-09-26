@@ -49,7 +49,11 @@ describe("e2e Letta Local", () => {
       // Type: User
       message = await generateText({
         model: lettaLocal(),
-        providerOptions: { agent: { id: agent.id } },
+        providerOptions: {
+          letta: {
+            agent: { id: agent.id },
+          },
+        },
         messages: modelTestMessage,
       });
       expect(message.text).to.exist.and.not.contain('3:"An error occurred."');
@@ -58,7 +62,11 @@ describe("e2e Letta Local", () => {
       await expect(
         generateText({
           model: lettaLocal(),
-          providerOptions: { agent: { id: agent.id } },
+          providerOptions: {
+            letta: {
+              agent: { id: agent.id },
+            },
+          },
           messages: modelTestMessageWithAssistantRole,
         }),
       ).rejects.toThrowError(
@@ -68,7 +76,11 @@ describe("e2e Letta Local", () => {
       // Type: System
       message = await generateText({
         model: lettaLocal(),
-        providerOptions: { agent: { id: agent.id } },
+        providerOptions: {
+          letta: {
+            agent: { id: agent.id },
+          },
+        },
         messages: modelTestMessageWithSystemRole,
       });
       expect(message.text).to.exist.and.not.contain('3:"An error occurred."');
@@ -77,7 +89,11 @@ describe("e2e Letta Local", () => {
       await expect(
         generateText({
           model: lettaLocal(),
-          providerOptions: { agent: { id: agent.id } },
+          providerOptions: {
+            letta: {
+              agent: { id: agent.id },
+            },
+          },
           messages: modelTestMessageWithToolRole,
         }),
       ).rejects.toThrow();
@@ -107,7 +123,11 @@ describe("e2e Letta Local", () => {
       // Type: User
       const { textStream: userTextStream } = streamText({
         model: lettaLocal(),
-        providerOptions: { agent: { id: agent.id } },
+        providerOptions: {
+          letta: {
+            agent: { id: agent.id },
+          },
+        },
         messages: modelTestMessage,
       });
       for await (const text of userTextStream) {
@@ -118,7 +138,11 @@ describe("e2e Letta Local", () => {
       // Type: Assistant
       const { textStream: assistantTextStream } = streamText({
         model: lettaLocal(),
-        providerOptions: { agent: { id: agent.id } },
+        providerOptions: {
+          letta: {
+            agent: { id: agent.id },
+          },
+        },
         messages: modelTestMessageWithAssistantRole,
       });
       for await (const text of assistantTextStream) {
@@ -129,7 +153,11 @@ describe("e2e Letta Local", () => {
       // Type: System
       const { textStream: systemTextStream } = streamText({
         model: lettaLocal(),
-        providerOptions: { agent: { id: agent.id } },
+        providerOptions: {
+          letta: {
+            agent: { id: agent.id },
+          },
+        },
         messages: modelTestMessageWithSystemRole,
       });
       for await (const text of systemTextStream) {
@@ -142,7 +170,11 @@ describe("e2e Letta Local", () => {
       // await expect(
       //   streamText({
       //     model: lettaLocal(),
-      //     providerOptions: { agent: { id: agent.id } },
+      //     providerOptions: {
+      //       letta: {
+      //         agent: { id: agent.id }
+      //       }
+      //     },
       //     messages: modelTestMessageWithToolRole,
       //   })
       //     .textStream[Symbol.asyncIterator]()
