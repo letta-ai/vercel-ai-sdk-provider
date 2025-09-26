@@ -10,7 +10,7 @@ The official Vercel AI SDK provider for [Letta](https://www.letta.com) - the pla
 
 ![Platform Overview](https://prod.ferndocs.com/_next/image?url=https%3A%2F%2Ffiles.buildwithfern.com%2Fhttps%3A%2F%2Fletta.docs.buildwithfern.com%2F2025-08-18T18%3A23%3A54.989Z%2Fimages%2Fplatform_overview.png&w=3840&q=75)
 
-## Letta Provider Features for Vercel AI SDK v5
+## Letta Provider Features for Vercel AI SDK v5+
 
 - **🤖 Agent-Based Architecture**: Work directly with Letta agents that maintain persistent memory and state
 - **💬 Streaming & Non-Streaming Support**:
@@ -69,7 +69,9 @@ import { generateText } from 'ai';
 const result = await generateText({
   model: lettaCloud(), // Model configuration (LLM, temperature, etc.) is managed through your Letta agent
   providerOptions: {
-    agent: { id: 'your-agent-id' }
+    letta: {
+      agent: { id: 'your-agent-id' }
+    }
   },
   prompt: 'Write a vegetarian lasagna recipe for 4 people.',
 });
@@ -86,7 +88,9 @@ import { streamText } from 'ai';
 const result = streamText({
   model: lettaCloud(), // Model configuration (LLM, temperature, etc.) is managed through your Letta agent
   providerOptions: {
-    agent: { id: 'your-agent-id' }
+    letta: {
+      agent: { id: 'your-agent-id' }
+    }
   },
   messages: [
     { role: 'user', content: 'Tell me a story about a robot learning to paint.' }
@@ -117,15 +121,17 @@ import { streamText } from 'ai';
 const result = streamText({
   model: lettaCloud(), // Model configuration (LLM, temperature, etc.) is managed through your Letta agent
   providerOptions: {
-    agent: {
-      id: 'your-agent-id',
-      maxSteps: 100,
-      background: true,
-      includePings: true,
-      // See more available request params here:
-      // https://docs.letta.com/api-reference/agents/messages/create-stream
-    },
-    timeoutInSeconds: 300 // The maximum time to wait for a response in seconds (default: 1000)
+    letta: {
+      agent: {
+        id: 'your-agent-id',
+        maxSteps: 100,
+        background: true,
+        includePings: true,
+        // See more available request params here:
+        // https://docs.letta.com/api-reference/agents/messages/create-stream
+      },
+      timeoutInSeconds: 300 // The maximum time to wait for a response in seconds (default: 1000)
+    }
   },
   messages: [
     { role: 'user', content: 'Tell me a story about a robot learning to paint.' }
@@ -251,7 +257,9 @@ export async function POST(req: Request) {
   const result = streamText({
     model: lettaCloud(),
     providerOptions: {
-      agent: { id: agentId }
+      letta: {
+        agent: { id: agentId }
+      }
     },
     messages: convertToModelMessages(messages),
   });
@@ -383,7 +391,11 @@ Both `streamText` and `generateText` support AI reasoning tokens:
 ```typescript
 const result = streamText({
   model: lettaCloud(),
-  providerOptions: { agent: { id: agentId } },
+  providerOptions: {
+    letta: {
+      agent: { id: agentId }
+    }
+  },
   messages: convertToModelMessages(messages),
 });
 
@@ -398,7 +410,11 @@ return result.toUIMessageStreamResponse({
 ```typescript
 const result = await generateText({
   model: lettaCloud(),
-  providerOptions: { agent: { id: agentId } },
+  providerOptions: {
+    letta: {
+      agent: { id: agentId }
+    }
+  },
   messages: convertToModelMessages(messages),
 });
 
@@ -533,7 +549,9 @@ const streamResult = streamText({
     },
   },
   providerOptions: {
-    agent: { id: agentId },
+    letta: {
+      agent: { id: agentId },
+    }
   },
   messages: messages,
 });
@@ -555,7 +573,9 @@ const generateResult = await generateText({
     },
   },
   providerOptions: {
-    agent: { id: agentId },
+    letta: {
+      agent: { id: agentId },
+    }
   },
   messages: messages,
 });
@@ -598,7 +618,9 @@ Letta supports Model Context Protocol (MCP) for advanced tool integration:
 const result = streamText({
   model: lettaCloud(),
   providerOptions: {
-    agent: { id: agentId } // Tools are configured in your Letta agent
+    letta: {
+      agent: { id: agentId } // Tools are configured in your Letta agent
+    }
   },
   messages: convertToModelMessages(messages),
 });
@@ -622,14 +644,22 @@ Both streaming and non-streaming approaches use the same provider pattern:
 const result = await generateText({
   model: lettaCloud(),
   messages: [{ role: 'user', content: 'Hello!' }],
-  providerOptions: { agent: { id: 'your-agent-id' } },
+  providerOptions: {
+    letta: {
+      agent: { id: 'your-agent-id' }
+    }
+  },
 });
 
 // Streaming
 const stream = streamText({
   model: lettaCloud(),
   messages: [{ role: 'user', content: 'Hello!' }],
-  providerOptions: { agent: { id: 'your-agent-id' } },
+  providerOptions: {
+    letta: {
+      agent: { id: 'your-agent-id' }
+    }
+  },
 });
 ```
 
@@ -643,12 +673,12 @@ const stream = streamText({
   model: lettaCloud(),
   messages: [{ role: 'user', content: 'Process this complex task...' }],
   providerOptions: {
-    agent: {
-      id: 'your-agent-id',
+    letta: {
+      agent: { id: 'your-agent-id' },
       background: true
-    },
-    // See more available request params here:
-    // https://docs.letta.com/api-reference/agents/messages/create-stream
+      // See more available request params here:
+      // https://docs.letta.com/api-reference/agents/messages/create-stream
+    }
   },
 });
 ```
@@ -688,19 +718,21 @@ const stream = streamText({
 ```typescript
 interface ProviderOptions {
   // https://docs.letta.com/api-reference/agents/messages/create-stream
-  agent: {
-    id?: string;
-    background?: boolean;
-    maxSteps?: number;
-    useAssistantMessage?: boolean;
-    assistantMessageToolName?: string;
-    assistantMessageToolKwarg?: string;
-    includeReturnMessageTypes?: MessageType[] | null;
-    enableThinking?: string;
-    streamTokens?: boolean;
-    includePings?: boolean;
-  };
-  timeoutInSeconds?: number;
+  letta: {
+   agent: {
+      id?: string;
+      background?: boolean;
+      maxSteps?: number;
+      useAssistantMessage?: boolean;
+      assistantMessageToolName?: string;
+      assistantMessageToolKwarg?: string;
+      includeReturnMessageTypes?: MessageType[] | null;
+      enableThinking?: string;
+      streamTokens?: boolean;
+      includePings?: boolean;
+    };
+    timeoutInSeconds?: number;
+  }
 }
 ```
 

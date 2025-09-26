@@ -64,7 +64,11 @@ describe("e2e Letta Cloud", () => {
         // Type: User
         message = await generateText({
           model: lettaCloud(),
-          providerOptions: { agent: { id: agent.id } },
+          providerOptions: {
+            letta: {
+              agent: { id: agent.id },
+            },
+          },
           messages: modelTestMessage,
         });
         expect(message.text).to.exist.and.not.contain('3:"An error occurred."');
@@ -72,7 +76,11 @@ describe("e2e Letta Cloud", () => {
         // Type: System
         message = await generateText({
           model: lettaCloud(),
-          providerOptions: { agent: { id: agent.id } },
+          providerOptions: {
+            letta: {
+              agent: { id: agent.id },
+            },
+          },
           messages: modelTestMessageWithSystemRole,
         });
         expect(message.text).to.exist.and.not.contain('3:"An error occurred."');
@@ -115,7 +123,11 @@ describe("e2e Letta Cloud", () => {
         try {
           const { textStream: userTextStream } = streamText({
             model: lettaCloud(),
-            providerOptions: { agent: { id: agent.id } },
+            providerOptions: {
+              letta: {
+                agent: { id: agent.id },
+              },
+            },
             messages: modelTestMessage,
           });
           for await (const text of userTextStream) {
@@ -133,7 +145,11 @@ describe("e2e Letta Cloud", () => {
           result = "";
           const { textStream: systemTextStream } = streamText({
             model: lettaCloud(),
-            providerOptions: { agent: { id: agent.id } },
+            providerOptions: {
+              letta: {
+                agent: { id: agent.id },
+              },
+            },
             messages: modelTestMessageWithSystemRole,
           });
           for await (const text of systemTextStream) {
@@ -184,7 +200,11 @@ describe("e2e Letta Cloud", () => {
         // Test streaming with reasoning enabled
         const result = streamText({
           model: lettaCloud(),
-          providerOptions: { agent: { id: agent.id } },
+          providerOptions: {
+            letta: {
+              agent: { id: agent.id },
+            },
+          },
           messages: [
             {
               role: "user",
@@ -352,7 +372,11 @@ describe("e2e Letta Cloud", () => {
         // Test generateText with reasoning
         const response = await generateText({
           model: lettaCloud(),
-          providerOptions: { agent: { id: agent.id } },
+          providerOptions: {
+            letta: {
+              agent: { id: agent.id },
+            },
+          },
           messages: [
             {
               role: "user",

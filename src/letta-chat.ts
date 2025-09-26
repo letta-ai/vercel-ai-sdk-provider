@@ -23,17 +23,20 @@ type MessageType =
 
 interface ProviderOptions {
   // https://docs.letta.com/api-reference/agents/messages/create-stream
-  agent: {
-    id?: string;
-    background?: boolean;
-    maxSteps?: number;
-    useAssistantMessage?: boolean;
-    assistantMessageToolName?: string;
-    assistantMessageToolKwarg?: string;
-    includeReturnMessageTypes?: MessageType[] | null;
-    enableThinking?: string; // Reflects sdk
-    streamTokens?: boolean;
-    includePings?: boolean;
+  letta: {
+    agent: {
+      id?: string;
+      background?: boolean;
+      maxSteps?: number;
+      useAssistantMessage?: boolean;
+      assistantMessageToolName?: string;
+      assistantMessageToolKwarg?: string;
+      includeReturnMessageTypes?: MessageType[] | null;
+      enableThinking?: string; // Reflects sdk
+      streamTokens?: boolean;
+      includePings?: boolean;
+    };
+    timeoutInSeconds?: number;
   };
   timeoutInSeconds?: number;
 }
@@ -65,18 +68,18 @@ export class LettaChatModel implements LanguageModelV2 {
   private getArgs(options: LanguageModelV2CallOptions) {
     const warnings: LanguageModelV2CallWarning[] = [];
 
-    const providerOptions = (
+    const lettaConfigs = (
       options as LanguageModelV2CallOptions & {
         providerOptions?: ProviderOptions;
       }
-    ).providerOptions;
+    ).providerOptions?.letta;
 
-    const { id: agentId, ...agentConfig } = providerOptions?.agent || {};
-    const timeoutInSeconds = providerOptions?.timeoutInSeconds;
+    const { id: agentId, ...agentConfig } = lettaConfigs?.agent || {};
+    const timeoutInSeconds = lettaConfigs?.timeoutInSeconds;
 
     if (!agentId) {
       throw new Error(
-        "Letta provider requires an agentId in providerOptions. Usage: generateText({ model: lettaCloud(), providerOptions: { agent: { id: 'your-agent-id' } }, ... })",
+        "Letta provider requires an agentId in providerOptions. Usage: generateText({ model: lettaCloud(), providerOptions: { letta: { agent: { id: 'your-agent-id' } } }, ... })",
       );
     }
 
