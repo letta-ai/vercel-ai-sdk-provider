@@ -249,7 +249,9 @@ import { streamText } from 'ai';
 const result = streamText({
   model: lettaCloud(),
   providerOptions: {
-    agent: { id: 'your-agent-id' }
+    letta: {
+      agent: { id: 'your-agent-id' }
+    }
   },
   messages: [
     { role: 'user', content: 'Hello!' }
@@ -271,7 +273,9 @@ import { generateText } from 'ai';
 const result = await generateText({
   model: lettaCloud(),
   providerOptions: {
-    agent: { id: 'your-agent-id' }
+    letta: {
+      agent: { id: 'your-agent-id' }
+    }
   },
   messages: [
     { role: 'user', content: 'Hello!' }
@@ -291,7 +295,9 @@ console.log(result.reasoning);
 const result = streamText({
   model: lettaLocal(), // Use local instance
   providerOptions: {
-    agent: { id: 'local-agent-123' }
+    letta: {
+      agent: { id: 'local-agent-123' }
+    }
   },
   messages: [...],
 });

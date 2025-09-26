@@ -1,4 +1,8 @@
-import { streamText, convertToModelMessages } from "ai";
+import {
+  streamText,
+  convertToModelMessages,
+  Experimental_Agent as Agent,
+} from "ai";
 import { lettaCloud, lettaLocal } from "@letta-ai/vercel-ai-sdk-provider";
 import { AGENT_ID, TEST_MODE } from "@/app/env-vars";
 import { z } from "zod";
@@ -31,9 +35,16 @@ export async function POST(req: Request) {
         inputSchema: z.any(),
         execute: async () => "Handled by Letta",
       },
+      memory_insert: {
+        description: "Insert memory content",
+        inputSchema: z.any(),
+        execute: async () => "Handled by Letta",
+      },
     },
     providerOptions: {
-      agent: { id: activeAgentId, background: true },
+      letta: {
+        agent: { id: activeAgentId, background: true },
+      },
     },
     messages: modelMessages,
   };
@@ -44,6 +55,16 @@ export async function POST(req: Request) {
       model: lettaLocal(),
       ...commonConfig,
     });
+
+    // const codingAgent = new Agent({
+    //   model: lettaLocal(),
+    //   tools: {
+    //     /* Your tools */
+    //   },
+    // });
+    // result = codingAgent.stream({
+    //   ...commonConfig,
+    // });
   } else {
     console.log("Using cloud Letta agent:", activeAgentId);
     result = streamText({

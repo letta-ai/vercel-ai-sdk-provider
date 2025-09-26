@@ -37,7 +37,9 @@ export async function POST(req: Request) {
       },
     },
     providerOptions: {
-      agent: { id: activeAgentId },
+      letta: {
+        agent: { id: activeAgentId },
+      },
     },
     messages: messages,
   };
