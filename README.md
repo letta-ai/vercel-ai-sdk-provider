@@ -527,26 +527,31 @@ See guide [here](https://docs.letta.com/guides/agents/filesystem).
 
 Once tools are configured on your agent, they work seamlessly with both streaming and non-streaming. Tool calls are handled automatically by Letta, so you don't need to define or execute tool functions in your AI SDK code.
 
-However, the Vercel AI SDK requires tool definitions in the configuration to prevent errors. You must provide placeholder tool configurations:
+However, the Vercel AI SDK requires tool definitions in the configuration to prevent errors. The Letta provider includes helper functions to create tool placeholders:
 
 ```typescript
+import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
 import { z } from 'zod';
 
 // Use with streaming
 const streamResult = streamText({
   model: lettaCloud(),
-  // Provide placeholder tool configurations to prevent bad AI SDK tool message errors
   tools: {
-    web_search: {
-      description: "Search the web",
-      inputSchema: z.any(),
-      execute: async () => "Handled by Letta",
-    },
-    memory_replace: {
-      description: "Replace memory content",
-      inputSchema: z.any(),
-      execute: async () => "Handled by Letta",
-    },
+    // Use prebuilt tools helper for common Letta tools
+    web_search: lettaCloud.tools.prebuilt("web_search"),
+    memory_insert: lettaCloud.tools.prebuilt("memory_insert"),
+
+    // Use custom helper for your own tools (works just like prebuilt)
+    analytics: lettaCloud.tools.custom("analytics"),
+
+    // Optionally provide description and schema (placeholders only - execution handled by Letta)
+    structured_tool: lettaCloud.tools.custom("structured_tool", {
+      description: "A tool with typed inputs",
+      inputSchema: z.object({
+        event: z.string(),
+        properties: z.record(z.any()),
+      }),
+    }),
   },
   providerOptions: {
     letta: {
@@ -558,19 +563,24 @@ const streamResult = streamText({
 
 // Use with non-streaming
 const generateResult = await generateText({
-  model: lettaCloud(),
+  model: lettaCloud(), // replace with lettaLocal() if you're self-hosted, or letta() for custom configs
   tools: {
-    // Provide placeholder tool configurations to prevent bad AI SDK tool message errors
-    web_search: {
-      description: "Search the web",
-      inputSchema: z.any(),
-      execute: async () => "Handled by Letta",
-    },
-    memory_replace: {
-      description: "Replace memory content",
-      inputSchema: z.any(),
-      execute: async () => "Handled by Letta",
-    },
+    // Prebuilt tools for common Letta functionality
+    web_search: lettaCloud.tools.prebuilt("web_search"),
+    memory_replace: lettaCloud.tools.prebuilt("memory_replace"),
+    core_memory_append: lettaCloud.tools.prebuilt("core_memory_append"),
+
+    // Custom tools work just like prebuilt
+    database_query: lettaCloud.tools.custom("database_query"),
+    my_custom_tool: lettaCloud.tools.custom("my_custom_tool"),
+
+    // Or with specific configuration (placeholders only - execution handled by Letta)
+    typed_query: lettaCloud.tools.custom("typed_query", {
+      description: "Query with typed parameters",
+      inputSchema: z.object({
+        query: z.string(),
+      }),
+    }),
   },
   providerOptions: {
     letta: {
@@ -581,29 +591,85 @@ const generateResult = await generateText({
 });
 ```
 
+**Available Prebuilt Tools**:
+
+**Core Memory Tools:**
+- `core_memory_replace` - Replace the contents of core memory. To delete memories, use an empty string for new_content.
+- `core_memory_append` - Append to the contents of core memory.
+
+**Memory Editing Tools:**
+- `memory` - Memory management tool with various sub-commands for memory block operations (view, create, str_replace, insert, delete, rename).
+- `memory_finish_edits` - Call the memory_finish_edits command when you are finished making edits (integrating all new information) into the memory blocks.
+- `memory_replace` - The memory_replace command allows you to replace a specific string in a memory block with a new string. This is used for making precise edits.
+- `memory_insert` - The memory_insert command allows you to insert text at a specific location in a memory block.
+- `memory_rethink` - The memory_rethink command allows you to completely rewrite the contents of a memory block. Use this tool to make large sweeping changes (e.g. when you want to condense or reorganize the memory blocks), do NOT use this tool to make small precise edits.
+
+**Archival Memory Tools:**
+- `archival_memory_insert` - Add to archival memory. Make sure to phrase the memory contents such that it can be easily queried later.
+- `archival_memory_search` - Search archival memory using semantic (embedding-based) search with optional temporal filtering.
+
+**Search Tools:**
+- `conversation_search` - Search prior conversation history using hybrid search (text + semantic similarity).
+
+**Messaging Tools:**
+- `send_message` - Sends a message to the human user.
+- `send_message_to_agents_matching_tags` - Sends a message to all agents within the same organization that match the specified tag criteria. Agents must possess all of the tags in match_all and at least one of the tags in match_some to receive the message.
+- `send_message_to_agent_and_wait_for_reply` - Sends a message to a specific Letta agent within the same organization and waits for a response. The sender's identity is automatically included, so no explicit introduction is needed in the message. This function is designed for two-way communication where a reply is expected.
+- `send_message_to_agent_async` - Sends a message to a specific Letta agent within the same organization. The sender's identity is automatically included, so no explicit introduction is required in the message. This function does not expect a response from the target agent, making it suitable for notifications or one-way communication.
+
+**Execution Tools:**
+- `run_code` - Run code in a sandbox. Supports Python, Javascript, Typescript, R, and Java.
+
+**Web Tools:**
+- `web_search` - Search the web using Exa's AI-powered search engine and retrieve relevant content.
+- `fetch_webpage` - Fetch a webpage and convert it to markdown/text format using Jina AI reader.
+
+**File System Tools:**
+- `open_file` - Open and read a file from the agent's filesystem
+- `grep_file` - Search for a pattern in files
+- `search_file` - Search for files by name or pattern
+
 **Note**: The actual tool execution happens in Letta - these configurations are placeholders required by the AI SDK to prevent runtime errors.
 
 #### Accessing Tool Calls
 
-Tool calls appear in message parts and can be filtered by type:
+Tool calls appear in message parts as named tool types (e.g., `tool-web_search`, `tool-calculator`):
 
 ```typescript
-// Type guard for named tool parts
-const isNamedTool = (part: { type: string; [key: string]: unknown }): boolean =>
+import { ToolUIPart } from 'ai';
+
+// Type guard for named tool parts (excludes generic tool-invocation type)
+const isNamedTool = (part: {
+  type: string;
+  [key: string]: unknown;
+}): part is ToolUIPart =>
   part.type.startsWith("tool-") && part.type !== "tool-invocation";
 
 // Filter tool parts from message parts
 const toolParts = message.parts?.filter(isNamedTool) || [];
 
 toolParts.forEach(part => {
-  console.log('Tool Type:', part.type); // e.g., "tool-call", "tool-result"
-  console.log('State:', part.state);
-  console.log('Call ID:', part.toolCallId);
-  console.log('Input:', part.input);
-  console.log('Output:', part.output);
+  console.log('Tool Type:', part.type); // e.g., "tool-web_search", "tool-calculator"
+
+  // Safely access properties that may exist
+  if ("state" in part) {
+    console.log('State:', part.state); // e.g., "input-available", "output-available"
+  }
+
+  if ("toolCallId" in part) {
+    console.log('Call ID:', part.toolCallId);
+  }
+
+  if ("input" in part && part.input !== null && part.input !== undefined) {
+    console.log('Input:', part.input);
+  }
+
+  if ("output" in part && part.output !== null && part.output !== undefined) {
+    console.log('Output:', part.output);
+  }
 
   // Handle errors if present
-  if (part.errorText) {
+  if ("errorText" in part && part.errorText) {
     console.error('Tool Error:', part.errorText);
   }
 });
