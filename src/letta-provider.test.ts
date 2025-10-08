@@ -173,4 +173,50 @@ describe("Letta Provider", () => {
       expect(LettaChatModel).toHaveBeenCalledWith(lettaLocal.client);
     });
   });
+
+  describe("Tools API", () => {
+    it("should expose tools property on provider", () => {
+      const provider = lettaCloud;
+
+      expect(provider.tools).toBeDefined();
+      expect(typeof provider.tools).toBe("object");
+    });
+
+    it("should have custom method", () => {
+      const provider = lettaCloud;
+
+      expect(provider.tools.custom).toBeDefined();
+      expect(typeof provider.tools.custom).toBe("function");
+    });
+
+    it("should have prebuilt method", () => {
+      const provider = lettaCloud;
+
+      expect(provider.tools.prebuilt).toBeDefined();
+      expect(typeof provider.tools.prebuilt).toBe("function");
+    });
+
+    it("should create custom tools", () => {
+      const tool = lettaCloud.tools.custom("my_tool", {
+        description: "My custom tool",
+      });
+
+      expect(tool).toHaveProperty("description");
+      expect(tool).toHaveProperty("inputSchema");
+      expect(tool).toHaveProperty("execute");
+      expect(tool.description).toBe("My custom tool");
+    });
+
+    it("should create prebuilt tools", () => {
+      const webSearchTool = lettaCloud.tools.prebuilt("web_search");
+      const memoryReplaceTool = lettaCloud.tools.prebuilt("memory_replace");
+
+      expect(webSearchTool).toHaveProperty("description");
+      expect(webSearchTool).toHaveProperty("inputSchema");
+      expect(webSearchTool).toHaveProperty("execute");
+      expect(memoryReplaceTool).toHaveProperty("description");
+      expect(memoryReplaceTool).toHaveProperty("inputSchema");
+      expect(memoryReplaceTool).toHaveProperty("execute");
+    });
+  });
 });

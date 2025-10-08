@@ -98,7 +98,22 @@ describe("convertToAiSdkMessage", () => {
           {
             type: "reasoning",
             text: "Let me think about this...",
-            source: "reasoner_model",
+            providerMetadata: {
+              letta: {
+                id: "4",
+                date: "2023-10-01T10:10:00.000Z",
+                name: null,
+                messageType: "reasoning_message",
+                otid: null,
+                senderId: null,
+                stepId: null,
+                isErr: null,
+                seqId: null,
+                runId: null,
+                reasoning: "Let me think about this...",
+                source: "reasoner_model",
+              },
+            },
           } as ExtendedReasoningUIPart,
         ],
       },
@@ -198,7 +213,22 @@ describe("convertToAiSdkMessage", () => {
           {
             type: "reasoning",
             text: "This is a reasoning message",
-            source: "non_reasoner_model",
+            providerMetadata: {
+              letta: {
+                id: "6",
+                date: "2023-10-01T10:25:00.000Z",
+                name: null,
+                messageType: "reasoning_message",
+                otid: null,
+                senderId: null,
+                stepId: null,
+                isErr: null,
+                seqId: null,
+                runId: null,
+                reasoning: "This is a reasoning message",
+                source: "non_reasoner_model",
+              },
+            },
           } as ExtendedReasoningUIPart,
           {
             type: "text",
