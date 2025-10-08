@@ -14,6 +14,12 @@ export async function POST(req: Request) {
   // Use agentId from request body if provided, otherwise fall back to env var
   const activeAgentId = agentId || AGENT_ID;
 
+  // Extract content from the last message for prompt
+  const lastMessage = messages[messages.length - 1];
+  const promptContent = typeof lastMessage?.content === 'string'
+    ? lastMessage.content
+    : lastMessage?.content?.map?.((part: any) => part.type === 'text' ? part.text : '').join('') || '';
+
   if (!activeAgentId) {
     throw new Error(
       "Missing agent ID - provide agentId in request or set LETTA_AGENT_ID environment variable",
@@ -49,7 +55,7 @@ export async function POST(req: Request) {
         agent: { id: activeAgentId },
       },
     },
-    messages: messages,
+    prompt: promptContent,
   });
 
   try {
@@ -87,6 +93,13 @@ export async function POST(req: Request) {
     console.log("Falling back to basic reasoning...");
     try {
       const fallbackProvider = TEST_MODE === "local" ? lettaLocal : lettaCloud;
+
+      // Extract content from the last message for prompt
+      const fallbackLastMessage = messages[messages.length - 1];
+      const fallbackPrompt = typeof fallbackLastMessage?.content === 'string'
+        ? fallbackLastMessage.content
+        : fallbackLastMessage?.content?.map?.((part: any) => part.type === 'text' ? part.text : '').join('') || '';
+
       const fallbackResult = await generateText({
         model: fallbackProvider(),
         tools: {
@@ -98,7 +111,7 @@ export async function POST(req: Request) {
             agent: { id: activeAgentId },
           },
         },
-        messages: messages,
+        prompt: fallbackPrompt,
       });
 
       const message = {

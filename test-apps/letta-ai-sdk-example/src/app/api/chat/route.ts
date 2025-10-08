@@ -14,6 +14,8 @@ export async function POST(req: Request) {
     );
   }
 
+  console.log('-> messages', messages)
+
   const modelMessages = convertToModelMessages(messages);
 
   console.log("=== DEBUG: Messages being sent to Letta ===");
@@ -22,6 +24,14 @@ export async function POST(req: Request) {
   // Select the appropriate provider based on TEST_MODE
   const provider = TEST_MODE === "local" ? lettaLocal : lettaCloud;
   console.log(`Using ${TEST_MODE === "local" ? "local" : "cloud"} Letta agent:`, activeAgentId);
+
+  // Extract content from the last message for prompt
+  const lastMessage = modelMessages[modelMessages.length - 1];
+  const promptContent = typeof lastMessage.content === 'string'
+    ? lastMessage.content
+    : lastMessage.content.map(part => part.type === 'text' ? part.text : '').join('');
+
+  console.log('-> promptContent:', promptContent)
 
   const config = {
     tools: {
@@ -33,7 +43,7 @@ export async function POST(req: Request) {
         agent: { id: activeAgentId, background: true },
       },
     },
-    messages: modelMessages,
+    prompt: promptContent,
   };
 
   console.log("=== DEBUG: Tools configured ===");
@@ -73,6 +83,13 @@ export async function POST(req: Request) {
     console.log("Falling back to basic reasoning...");
     try {
       const fallbackProvider = TEST_MODE === "local" ? lettaLocal : lettaCloud;
+
+      // Extract content from the last message for prompt
+      const fallbackLastMessage = modelMessages[modelMessages.length - 1];
+      const fallbackPrompt = typeof fallbackLastMessage.content === 'string'
+        ? fallbackLastMessage.content
+        : fallbackLastMessage.content.map(part => part.type === 'text' ? part.text : '').join('');
+
       const fallbackConfig = {
         tools: {
           memory_insert: fallbackProvider.tool("memory_insert"),
@@ -83,7 +100,7 @@ export async function POST(req: Request) {
             agent: { id: activeAgentId, background: true },
           },
         },
-        messages: modelMessages,
+        prompt: fallbackPrompt,
       };
 
       const fallbackResult = streamText({

@@ -428,7 +428,23 @@ const systemResult = await generateText({
     }
   },
   messages: [
-    { role: 'system', content: 'You are a helpful weather assistant. Always provide temperature in Celsius.' }
+    { role: 'system', content: 'The user prefers metric units. Always provide temperature in Celsius.' }
+  ],
+});
+
+
+// 🔴 Note: This will NOT send multiple messages to the agent
+const systemResult = await generateText({
+  model: lettaCloud(),
+  providerOptions: {
+    letta: {
+      agent: { id: 'your-agent-id' }
+    }
+  },
+  messages: [
+    { role: 'user', content: 'What is the weather like today?' },
+    { role: 'system', content: 'The user prefers metric units. Always provide temperature in Celsius.' },
+    { role: 'user', content: 'I like the weather today.' } // Only this last message will get sent to the agent
   ],
 });
 ```
@@ -543,8 +559,6 @@ message.parts?.forEach((part) => {
 **Reasoning Types:**
 - **Model Reasoning** (`reasoner_model`): Internal thinking from the language model itself
 - **Agent Reasoning** (`non_reasoner_model`): The internal reasoning of the agent signature
-
-
 
 
 ### Message Conversion
