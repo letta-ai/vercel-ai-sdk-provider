@@ -422,4 +422,169 @@ describe("e2e Letta Cloud", () => {
       }
     },
   );
+
+  it(
+    "[generateText with prompt] should handle prompt parameter",
+    {
+      timeout: 100_000, // 100 seconds
+    },
+    async () => {
+      if (!serviceAvailable) {
+        console.log("Skipping test: Letta service unavailable");
+        return;
+      }
+
+      let agent;
+      try {
+        agent = await lettaCloud.client.agents.create(newAgent);
+        expect(agent.name).toBe(newAgentName);
+        expect(agent.description).toBe(newAgentDescription);
+
+        const result = await generateText({
+          model: lettaCloud(),
+          providerOptions: {
+            letta: {
+              agent: { id: agent.id },
+            },
+          },
+          prompt: "Invent a new holiday and describe its traditions.",
+        });
+
+        expect(result.text).to.exist.and.not.contain('3:"An error occurred."');
+        expect(typeof result.text).toBe("string");
+        expect(result.text.length).toBeGreaterThan(0);
+      } finally {
+        // Always try to clean up
+        if (agent) {
+          try {
+            await lettaCloud.client.agents.delete(agent.id);
+            await expect(
+              lettaCloud.client.agents.retrieve(agent.id),
+            ).rejects.toHaveProperty("statusCode", 404);
+          } catch (cleanupError) {
+            console.warn("Failed to clean up agent:", cleanupError);
+          }
+        }
+      }
+    },
+  );
+
+  it(
+    "[streamText with prompt] should handle prompt parameter",
+    {
+      timeout: 100_000, // 100 seconds
+    },
+    async () => {
+      if (!serviceAvailable) {
+        console.log("Skipping test: Letta service unavailable");
+        return;
+      }
+
+      let agent;
+      try {
+        agent = await lettaCloud.client.agents.create(newAgent);
+        expect(agent.name).toBe(newAgentName);
+        expect(agent.description).toBe(newAgentDescription);
+
+        const result = streamText({
+          model: lettaCloud(),
+          providerOptions: {
+            letta: {
+              agent: { id: agent.id },
+            },
+          },
+          prompt:
+            "Tell me about the future of artificial intelligence in three sentences.",
+        });
+
+        let fullText = "";
+        for await (const textPart of result.textStream) {
+          fullText += textPart;
+        }
+
+        expect(fullText).to.exist.and.not.contain('3:"An error occurred."');
+        expect(typeof fullText).toBe("string");
+        expect(fullText.length).toBeGreaterThan(0);
+      } finally {
+        // Always try to clean up
+        if (agent) {
+          try {
+            await lettaCloud.client.agents.delete(agent.id);
+            await expect(
+              lettaCloud.client.agents.retrieve(agent.id),
+            ).rejects.toHaveProperty("statusCode", 404);
+          } catch (cleanupError) {
+            console.warn("Failed to clean up agent:", cleanupError);
+          }
+        }
+      }
+    },
+  );
+
+  it(
+    "[combined prompt test] should handle both generateText and streamText with prompts",
+    {
+      timeout: 100_000, // 100 seconds
+    },
+    async () => {
+      if (!serviceAvailable) {
+        console.log("Skipping test: Letta service unavailable");
+        return;
+      }
+
+      let agent;
+      try {
+        agent = await lettaCloud.client.agents.create(newAgent);
+        expect(agent.name).toBe(newAgentName);
+        expect(agent.description).toBe(newAgentDescription);
+
+        // Test generateText with prompt
+        const generateResult = await generateText({
+          model: lettaCloud(),
+          providerOptions: {
+            letta: {
+              agent: { id: agent.id },
+            },
+          },
+          prompt: "Write a haiku about programming.",
+        });
+
+        expect(generateResult.text).to.exist.and.not.contain(
+          '3:"An error occurred."',
+        );
+        expect(generateResult.text.length).toBeGreaterThan(0);
+
+        // Test streamText with prompt
+        const streamResult = streamText({
+          model: lettaCloud(),
+          providerOptions: {
+            letta: {
+              agent: { id: agent.id },
+            },
+          },
+          prompt: "Describe your favorite food in one sentence.",
+        });
+
+        let streamedText = "";
+        for await (const textPart of streamResult.textStream) {
+          streamedText += textPart;
+        }
+
+        expect(streamedText).to.exist.and.not.contain('3:"An error occurred."');
+        expect(streamedText.length).toBeGreaterThan(0);
+      } finally {
+        // Always try to clean up
+        if (agent) {
+          try {
+            await lettaCloud.client.agents.delete(agent.id);
+            await expect(
+              lettaCloud.client.agents.retrieve(agent.id),
+            ).rejects.toHaveProperty("statusCode", 404);
+          } catch (cleanupError) {
+            console.warn("Failed to clean up agent:", cleanupError);
+          }
+        }
+      }
+    },
+  );
 });

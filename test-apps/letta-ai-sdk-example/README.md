@@ -22,18 +22,22 @@ This is a Next.js test application for the Letta AI SDK Provider with AI SDK 5.0
 Create a `.env` file in this directory:
 
 ```bash
-# Required: Your Letta API token
+# Required for cloud mode: Your Letta API token
 LETTA_API_KEY=your-letta-api-token
 
 # Required: Your Letta agent ID
 LETTA_AGENT_ID=your-agent-id
 
 # Optional: Test mode (local or cloud)
-TEST_MODE=cloud
+TEST_MODE=cloud  # Use "local" for local development (no API key required)
 
 # Optional: Custom base URL for local development
 BASE_URL_OVERRIDE=http://localhost:8283
 ```
+
+**Note:**
+- **Cloud mode** (`TEST_MODE=cloud`) requires `LETTA_API_KEY`
+- **Local mode** (`TEST_MODE=local`) does NOT require an API key
 
 ### 2. Install Dependencies
 
@@ -76,8 +80,8 @@ The app provides a simple chat interface where you can:
 
 Set `TEST_MODE` in your environment:
 
-- `cloud`: Uses Letta Cloud (default)
-- `local`: Uses local Letta instance at `http://localhost:8283`
+- `cloud`: Uses Letta Cloud (default) - **requires LETTA_API_KEY**
+- `local`: Uses local Letta instance at `http://localhost:8283` - **no API key required**
 
 #### Agent Management
 
@@ -147,8 +151,8 @@ Uses custom fetch with `generateText` for complete responses:
 
 3. **Network Errors**
    - Check `BASE_URL_OVERRIDE` for local development
-   - Verify `LETTA_API_KEY` is valid
-   - Ensure Letta service is running (for local mode)
+   - Verify `LETTA_API_KEY` is valid (for cloud mode)
+   - Ensure Letta service is running (for local mode - no API key needed)
 
 4. **TypeScript Errors**
    ```bash
@@ -172,7 +176,7 @@ NODE_ENV=development
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `LETTA_API_KEY` | Yes | Your Letta API token |
+| `LETTA_API_KEY` | Cloud only | Your Letta API token (not required for local mode) |
 | `LETTA_AGENT_ID` | Yes | Default agent ID to use |
 | `TEST_MODE` | No | `cloud` or `local` (default: `cloud`) |
 | `BASE_URL_OVERRIDE` | No | Custom Letta instance URL |
@@ -248,14 +252,17 @@ import { streamText } from 'ai';
 
 const result = streamText({
   model: lettaCloud(),
+  tools: {
+    // Tools are placeholders, execution handled by Letta
+    memory_insert: lettaCloud.tool("memory_insert"),
+    memory_replace: lettaCloud.tool("memory_replace"),
+  },
   providerOptions: {
     letta: {
       agent: { id: 'your-agent-id' }
     }
   },
-  messages: [
-    { role: 'user', content: 'Hello!' }
-  ]
+  prompt: 'Hello!',
 });
 
 // Return streaming response
@@ -272,14 +279,21 @@ import { generateText } from 'ai';
 
 const result = await generateText({
   model: lettaCloud(),
+  tools: {
+    // Tools are placeholders, execution handled by Letta
+    web_search: lettaCloud.tool("web_search", {
+      description: "Search the web",
+    }),
+    memory_replace: lettaCloud.tool("memory_replace", {
+      description: "Replace memory content",
+    }),
+  },
   providerOptions: {
     letta: {
       agent: { id: 'your-agent-id' }
     }
   },
-  messages: [
-    { role: 'user', content: 'Hello!' }
-  ]
+  prompt: 'Hello!',
 });
 
 // Access complete response
@@ -289,17 +303,25 @@ console.log(result.toolCalls);
 console.log(result.reasoning);
 ```
 
-### With Custom Configuration
+### With Local Development (No API Key Required)
 
 ```typescript
+import { lettaLocal } from '@letta-ai/vercel-ai-sdk-provider';
+import { streamText } from 'ai';
+
+// Local instance doesn't require LETTA_API_KEY
 const result = streamText({
-  model: lettaLocal(), // Use local instance
+  model: lettaLocal(), // Automatically connects to http://localhost:8283
+  tools: {
+    memory_insert: lettaLocal.tool("memory_insert"),
+    memory_replace: lettaLocal.tool("memory_replace"),
+  },
   providerOptions: {
     letta: {
       agent: { id: 'local-agent-123' }
     }
   },
-  messages: [...],
+  prompt: 'Hello!',
 });
 ```
 
