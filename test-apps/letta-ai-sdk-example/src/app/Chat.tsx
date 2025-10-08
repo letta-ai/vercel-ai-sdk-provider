@@ -146,7 +146,11 @@ export function Chat(props: ChatProps) {
           >
             <div className="flex justify-between items-center mb-2">
               <div className="font-bold text-lg">
-                {message.role === "user" ? "👤 User" : "🤖 Assistant"}
+                {message.role === "user"
+                  ? "👤 User"
+                  : message.role === "system"
+                    ? "⚙️ System"
+                    : "🤖 Assistant"}
               </div>
               <div className="text-xs text-gray-500">ID: {message.id}</div>
             </div>
@@ -158,8 +162,18 @@ export function Chat(props: ChatProps) {
                     <div key={index}>
                       {/* Text parts - regular message content */}
                       {part.type === "text" && (
-                        <div className="p-3 bg-gray-50 rounded-lg">
-                          <div className="text-gray-800">{part.text}</div>
+                        <div className={`p-3 rounded-lg ${
+                          message.role === "system"
+                            ? "bg-yellow-50 border-l-4 border-yellow-400"
+                            : "bg-gray-50"
+                        }`}>
+                          <div className={`${
+                            message.role === "system"
+                              ? "text-yellow-900 text-sm"
+                              : "text-gray-800"
+                          }`}>
+                            {part.text}
+                          </div>
                         </div>
                       )}
 
@@ -300,8 +314,16 @@ export function Chat(props: ChatProps) {
                   ))
                 : /* Fallback for legacy Message format without parts */
                   (message as { content?: string }).content && (
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <div className="text-gray-800">
+                    <div className={`p-3 rounded-lg ${
+                      message.role === "system"
+                        ? "bg-yellow-50 border-l-4 border-yellow-400"
+                        : "bg-gray-50"
+                    }`}>
+                      <div className={`${
+                        message.role === "system"
+                          ? "text-yellow-900 text-sm"
+                          : "text-gray-800"
+                      }`}>
                         {(message as { content?: string }).content}
                       </div>
                     </div>

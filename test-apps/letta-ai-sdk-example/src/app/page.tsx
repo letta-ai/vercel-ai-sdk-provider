@@ -37,6 +37,7 @@ async function getExistingMessages(agentId: string) {
               "reasoning_message",
               "tool_call_message",
               "tool_return_message",
+              "system_message"
             ],
           },
         )
@@ -49,6 +50,7 @@ async function getExistingMessages(agentId: string) {
               "reasoning_message",
               "tool_call_message",
               "tool_return_message",
+              "system_message"
             ],
           },
         );
