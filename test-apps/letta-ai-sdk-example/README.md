@@ -35,7 +35,7 @@ TEST_MODE=cloud  # Use "local" for local development (no API key required)
 BASE_URL_OVERRIDE=http://localhost:8283
 ```
 
-**Note:** 
+**Note:**
 - **Cloud mode** (`TEST_MODE=cloud`) requires `LETTA_API_KEY`
 - **Local mode** (`TEST_MODE=local`) does NOT require an API key
 
@@ -253,7 +253,7 @@ import { streamText } from 'ai';
 const result = streamText({
   model: lettaCloud(),
   tools: {
-    // Use modern tool syntax
+    // Tools are placeholders, execution handled by Letta
     memory_insert: lettaCloud.tool("memory_insert"),
     memory_replace: lettaCloud.tool("memory_replace"),
   },
@@ -280,7 +280,7 @@ import { generateText } from 'ai';
 const result = await generateText({
   model: lettaCloud(),
   tools: {
-    // Use modern tool syntax - tools are placeholders, execution handled by Letta
+    // Tools are placeholders, execution handled by Letta
     web_search: lettaCloud.tool("web_search", {
       description: "Search the web",
     }),
