@@ -15,23 +15,23 @@ const isNamedTool = (part: {
 const isReasoningPart = (part: {
   type: string;
   [key: string]: unknown;
-}): part is { type: string; text: string; source?: string } =>
+}): part is {
+  type: string;
+  text: string;
+  providerMetadata?: { letta?: { source?: string; [key: string]: unknown } };
+} =>
   part.type === "reasoning" && "text" in part && typeof part.text === "string";
 
 // Helper to determine reasoning source
 const getReasoningSource = (part: {
   type: string;
   text: string;
-  source?: string;
-  providerMetadata?: { reasoning?: { source?: string }; source?: string };
+  providerMetadata?: { letta?: { source?: string; [key: string]: unknown } };
 }) => {
-  // Use the source field from Letta ReasoningMessage via providerMetadata
+  // Use the source field from Letta ReasoningMessage via providerMetadata.letta
   // "reasoner_model" = model-level reasoning (from language model itself)
   // "non_reasoner_model" = agent-level reasoning (from Letta platform)
-  const source =
-    part.providerMetadata?.reasoning?.source ||
-    part.providerMetadata?.source ||
-    part.source;
+  const source = part.providerMetadata?.letta?.source;
 
   if (source === "reasoner_model") {
     return {
@@ -167,6 +167,8 @@ export function Chat(props: ChatProps) {
                       {isReasoningPart(part) &&
                         (() => {
                           const { source, text } = getReasoningSource(part);
+                          const rawSource =
+                            part.providerMetadata?.letta?.source;
 
                           // Model reasoning
                           if (source === "model" && showModelReasoning) {
@@ -177,12 +179,28 @@ export function Chat(props: ChatProps) {
                                     🧠 Model Reasoning
                                   </span>
                                   <span className="ml-2 text-xs text-purple-500">
-                                    (extracted from language model)
+                                    {rawSource
+                                      ? `(source: ${rawSource})`
+                                      : "(extracted from language model)"}
                                   </span>
                                 </div>
                                 <div className="text-purple-800 text-sm italic">
                                   {text}
                                 </div>
+                                {part.providerMetadata?.letta && (
+                                  <details className="mt-2">
+                                    <summary className="cursor-pointer text-xs text-purple-600 hover:text-purple-800">
+                                      Show Letta Metadata
+                                    </summary>
+                                    <pre className="mt-1 text-xs bg-purple-100 p-2 rounded overflow-x-auto">
+                                      {JSON.stringify(
+                                        part.providerMetadata.letta,
+                                        null,
+                                        2,
+                                      )}
+                                    </pre>
+                                  </details>
+                                )}
                               </div>
                             );
                           }
@@ -196,12 +214,27 @@ export function Chat(props: ChatProps) {
                                     🤖 Agent Reasoning
                                   </span>
                                   <span className="ml-2 text-xs text-blue-500">
-                                    (from Letta agent)
+                                    (source: {rawSource || "non_reasoner_model"}
+                                    )
                                   </span>
                                 </div>
                                 <div className="text-blue-800 text-sm">
                                   {text}
                                 </div>
+                                {part.providerMetadata?.letta && (
+                                  <details className="mt-2">
+                                    <summary className="cursor-pointer text-xs text-blue-600 hover:text-blue-800">
+                                      Show Letta Metadata
+                                    </summary>
+                                    <pre className="mt-1 text-xs bg-blue-100 p-2 rounded overflow-x-auto">
+                                      {JSON.stringify(
+                                        part.providerMetadata.letta,
+                                        null,
+                                        2,
+                                      )}
+                                    </pre>
+                                  </details>
+                                )}
                               </div>
                             );
                           }

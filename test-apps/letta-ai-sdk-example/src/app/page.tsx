@@ -26,8 +26,7 @@ async function getAgentId() {
 async function getExistingMessages(agentId: string) {
   try {
     console.log("=====", TEST_MODE);
-    // convertToAiSdkMessage now returns UIMessage[] instead of Message[]
-    // This includes proper parts array with text, reasoning, and tool invocation parts
+
     return TEST_MODE === "local"
       ? convertToAiSdkMessage(
           await lettaLocal.client.agents.messages.list(agentId),
@@ -36,6 +35,8 @@ async function getExistingMessages(agentId: string) {
               "user_message",
               "assistant_message",
               "reasoning_message",
+              "tool_call_message",
+              "tool_return_message",
             ],
           },
         )
@@ -46,6 +47,8 @@ async function getExistingMessages(agentId: string) {
               "user_message",
               "assistant_message",
               "reasoning_message",
+              "tool_call_message",
+              "tool_return_message",
             ],
           },
         );
@@ -63,10 +66,7 @@ async function saveAgentIdCookie(agentId: string) {
 
 export default async function Homepage() {
   const agentId = await getAgentId();
-  console.log("agentId", agentId);
 
-  // existingMessages is now UIMessage[] with proper parts structure
-  // Each message contains parts array with text, reasoning, and tool invocation parts
   const existingMessages = await getExistingMessages(agentId);
 
   return (
