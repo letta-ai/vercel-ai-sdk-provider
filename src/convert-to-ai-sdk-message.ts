@@ -116,16 +116,30 @@ export function convertToAiSdkMessage(
 
       sdkMessageObj[message.id].role = "assistant";
 
-      const reasoningPart: ReasoningUIPart & { source?: string } = {
+      const reasoningPart: ReasoningUIPart = {
         type: "reasoning",
         text: message.reasoning,
-        source: message.source, // Include the source field from Letta
+        providerMetadata: {
+          letta: {
+            id: message.id,
+            date: message.date.toISOString(),
+            name: message.name ?? null,
+            messageType: message.messageType,
+            otid: message.otid ?? null,
+            senderId: message.senderId ?? null,
+            stepId: message.stepId ?? null,
+            isErr: message.isErr ?? null,
+            seqId: message.seqId ?? null,
+            runId: message.runId ?? null,
+            reasoning: message.reasoning,
+            source: message.source ?? null,
+          },
+        },
       };
 
       sdkMessageObj[message.id].parts.push(reasoningPart);
     }
 
-    // Letta handles the tool call message, so the tool *return* message is not used
     if (message.messageType === "tool_call_message") {
       if (!sdkMessageObj[message.id].parts) {
         sdkMessageObj[message.id].parts = [];
@@ -140,6 +154,44 @@ export function convertToAiSdkMessage(
         state: "output-available" as const,
         input: message.toolCall?.arguments || {},
         output: "",
+      };
+
+      sdkMessageObj[message.id].parts.push(toolInvocation);
+    }
+
+    // Handle tool return messages with full Letta metadata
+    if (message.messageType === "tool_return_message") {
+      if (!sdkMessageObj[message.id].parts) {
+        sdkMessageObj[message.id].parts = [];
+      }
+
+      sdkMessageObj[message.id].role = "assistant";
+
+      const toolInvocation: ToolUIPart = {
+        type: "tool-invocation" as const,
+        toolCallId: message.toolCallId || "",
+        state: "output-available" as const,
+        input: {},
+        output: message.toolReturn,
+        callProviderMetadata: {
+          letta: {
+            id: message.id,
+            date: message.date.toISOString(),
+            name: message.name ?? null,
+            messageType: message.messageType,
+            otid: message.otid ?? null,
+            senderId: message.senderId ?? null,
+            stepId: message.stepId ?? null,
+            isErr: message.isErr ?? null,
+            seqId: message.seqId ?? null,
+            runId: message.runId ?? null,
+            toolReturn: message.toolReturn,
+            status: message.status,
+            toolCallId: message.toolCallId,
+            stdout: message.stdout ?? null,
+            stderr: message.stderr ?? null,
+          },
+        },
       };
 
       sdkMessageObj[message.id].parts.push(toolInvocation);
