@@ -148,10 +148,10 @@ for await (const textPart of result.textStream) {
 
 ### Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `LETTA_API_KEY` | Your Letta API key (required for Letta Cloud) | - |
-| `LETTA_BASE_URL` | The base URL for Letta API | `https://api.letta.com` |
+| Variable | Description | Default (Cloud) | Default (Local) |
+|----------|-------------|-----------------|-----------------|
+| `LETTA_API_KEY` | Your Letta API key | Required | Not required |
+| `LETTA_BASE_URL` | The base URL for Letta API | `https://api.letta.com` | `http://localhost:8283` |
 
 ### Provider Setup
 
@@ -206,18 +206,8 @@ const letta = createLetta({
   token: 'your-access-token'
 });
 
-// For local instances - no API key needed
-const lettaLocalCustom = createLetta({
-  baseUrl: 'http://localhost:3000',
-  token: 'your-access-token',
-});
-
 const model = letta(); // Model configuration (LLM, temperature, etc.) is managed through your Letta agent
 ```
-
-**API Key Behavior:**
-- **Cloud instances** (https://...) - API key is **required** via `token` parameter or `LETTA_API_KEY` environment variable
-- **Local instances** (localhost/127.0.0.1) - API key is **optional** and not enforced
 
 ## Working with Letta Agents
 
@@ -735,7 +725,7 @@ The Vercel AI SDK provides a `stopWhen` parameter to control when generation sto
 **Important**: If you want to limit the number of steps Letta executes on the backend, use `maxSteps` in `providerOptions.letta.agent.maxSteps` instead of relying on `stopWhen`.
 
 ```typescript
-// ❌ This will NOT stop Letta from executing 10 steps on the backend
+// 🔴 This will NOT stop Letta from executing 10 steps on the backend
 const result = await generateText({
   model: lettaCloud(),
   messages: [{ role: 'user', content: 'Help me with a task' }],
