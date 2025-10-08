@@ -262,9 +262,7 @@ const result = streamText({
       agent: { id: 'your-agent-id' }
     }
   },
-  messages: [
-    { role: 'user', content: 'Hello!' }
-  ]
+  prompt: 'Hello!',
 });
 
 // Return streaming response
@@ -295,9 +293,7 @@ const result = await generateText({
       agent: { id: 'your-agent-id' }
     }
   },
-  messages: [
-    { role: 'user', content: 'Hello!' }
-  ]
+  prompt: 'Hello!',
 });
 
 // Access complete response
@@ -325,9 +321,7 @@ const result = streamText({
       agent: { id: 'local-agent-123' }
     }
   },
-  messages: [
-    { role: 'user', content: 'Hello!' }
-  ],
+  prompt: 'Hello!',
 });
 ```
 

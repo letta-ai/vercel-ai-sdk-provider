@@ -92,9 +92,7 @@ const result = streamText({
       agent: { id: 'your-agent-id' }
     }
   },
-  messages: [
-    { role: 'user', content: 'Tell me a story about a robot learning to paint.' }
-  ],
+  prompt: 'Tell me a story about a robot learning to paint.',
 });
 
 for await (const textPart of result.textStream) {
@@ -133,9 +131,7 @@ const result = streamText({
       timeoutInSeconds: 300 // The maximum time to wait for a response in seconds (default: 1000)
     }
   },
-  messages: [
-    { role: 'user', content: 'Tell me a story about a robot learning to paint.' }
-  ],
+  prompt: 'Tell me a story about a robot learning to paint.',
 });
 
 for await (const textPart of result.textStream) {
@@ -390,6 +386,62 @@ export default async function HomePage() {
 
 
 ## Advanced Features
+
+### Message Roles (System vs User)
+
+Letta agents support different message roles. You can send messages as `user` or `system`:
+
+```typescript
+import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
+import { generateText } from 'ai';
+
+// Using prompt (defaults to user role)
+const promptResult = await generateText({
+  model: lettaCloud(),
+  providerOptions: {
+    letta: {
+      agent: { id: 'your-agent-id' }
+    }
+  },
+  prompt: 'What is the weather like today?', // Automatically sent as role: 'user'
+});
+
+// User message - using messages array (same as prompt above)
+const userResult = await generateText({
+  model: lettaCloud(),
+  providerOptions: {
+    letta: {
+      agent: { id: 'your-agent-id' }
+    }
+  },
+  messages: [
+    { role: 'user', content: 'What is the weather like today?' }
+  ],
+});
+
+// System message - for instructions or context
+const systemResult = await generateText({
+  model: lettaCloud(),
+  providerOptions: {
+    letta: {
+      agent: { id: 'your-agent-id' }
+    }
+  },
+  messages: [
+    { role: 'system', content: 'You are a helpful weather assistant. Always provide temperature in Celsius.' }
+  ],
+});
+```
+
+**Message Role Behavior:**
+- **`prompt`**: Convenience parameter that defaults to `role: 'user'`
+- **`user`**: Standard conversational messages from the user
+- **`system`**: Instructions, context, or configuration for the agent's behavior
+
+**Important:**
+- Letta accepts only **one message at a time** in the messages array. The backend SDK processes messages sequentially.
+- Using `prompt` is equivalent to sending a single message with `role: 'user'`
+- For conversation history, use the `convertToAiSdkMessage` utility to load existing messages from your Letta agent (see "Using Existing Messages" section below).
 
 ### Reasoning Support
 
@@ -676,7 +728,7 @@ Both streaming and non-streaming approaches use the same provider pattern:
 // Non-streaming
 const result = await generateText({
   model: lettaCloud(),
-  messages: [{ role: 'user', content: 'Hello!' }],
+  prompt: 'Hello!',
   providerOptions: {
     letta: {
       agent: { id: 'your-agent-id' }
@@ -687,7 +739,7 @@ const result = await generateText({
 // Streaming
 const stream = streamText({
   model: lettaCloud(),
-  messages: [{ role: 'user', content: 'Hello!' }],
+  prompt: 'Hello!',
   providerOptions: {
     letta: {
       agent: { id: 'your-agent-id' }
@@ -704,7 +756,7 @@ For streaming operations that may take longer to complete, you can use the `back
 // Streaming with background execution
 const stream = streamText({
   model: lettaCloud(),
-  messages: [{ role: 'user', content: 'Process this complex task...' }],
+  prompt: 'Process this complex task...',
   providerOptions: {
     letta: {
       agent: { id: 'your-agent-id' },
@@ -728,7 +780,7 @@ The Vercel AI SDK provides a `stopWhen` parameter to control when generation sto
 // 🔴 This will NOT stop Letta from executing 10 steps on the backend
 const result = await generateText({
   model: lettaCloud(),
-  messages: [{ role: 'user', content: 'Help me with a task' }],
+  prompt: 'Help me with a task',
   providerOptions: {
     letta: {
       agent: {
@@ -743,7 +795,7 @@ const result = await generateText({
 // ✅ This correctly limits Letta to 5 steps
 const result = await generateText({
   model: lettaCloud(),
-  messages: [{ role: 'user', content: 'Help me with a task' }],
+  prompt: 'Help me with a task',
   providerOptions: {
     letta: {
       agent: {
