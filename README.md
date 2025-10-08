@@ -157,16 +157,30 @@ for await (const textPart of result.textStream) {
 
 #### Letta Cloud (Recommended)
 
+**Required Environment Variable:**
+- `LETTA_API_KEY` - Your Letta Cloud API key
+
 ```typescript
 import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
 
-// Uses LETTA_API_KEY and LETTA_BASE_URL from environment
+// Requires LETTA_API_KEY environment variable
 const model = lettaCloud(); // Model configuration (LLM, temperature, etc.) is managed through your Letta agent
 ```
 
 #### Local Letta Instance
 
 For local development with Letta running on `http://localhost:8283`:
+
+**No API key required!** Local instances (localhost or 127.0.0.1) automatically work without authentication.
+
+```typescript
+import { lettaLocal } from '@letta-ai/vercel-ai-sdk-provider';
+
+// Works without LETTA_API_KEY for local development
+const model = lettaLocal(); // Model configuration (LLM, temperature, etc.) is managed through your Letta agent
+```
+
+Optionally, you can set a custom local URL:
 
 ```bash
 # .env
@@ -179,26 +193,31 @@ Or export directly:
 export LETTA_BASE_URL=http://localhost:8283
 ```
 
-**Remember:** Exported variables need to be available when running your application.
-
-```typescript
-import { lettaLocal } from '@letta-ai/vercel-ai-sdk-provider';
-
-const model = lettaLocal(); // Model configuration (LLM, temperature, etc.) is managed through your Letta agent
-```
+**Note:** Exported variables need to be available when running your application.
 
 #### Custom Configuration
 
 ```typescript
 import { createLetta } from '@letta-ai/vercel-ai-sdk-provider';
 
+// For cloud/remote instances - requires API key
 const letta = createLetta({
   baseUrl: 'https://your-custom-letta-endpoint.com',
   token: 'your-access-token'
 });
 
+// For local instances - no API key needed
+const lettaLocalCustom = createLetta({
+  baseUrl: 'http://localhost:3000',
+  token: 'your-access-token',
+});
+
 const model = letta(); // Model configuration (LLM, temperature, etc.) is managed through your Letta agent
 ```
+
+**API Key Behavior:**
+- **Cloud instances** (https://...) - API key is **required** via `token` parameter or `LETTA_API_KEY` environment variable
+- **Local instances** (localhost/127.0.0.1) - API key is **optional** and not enforced
 
 ## Working with Letta Agents
 
@@ -210,7 +229,7 @@ const model = letta(); // Model configuration (LLM, temperature, etc.) is manage
 import { LettaClient } from "@letta-ai/letta-client";
 
 const client = new LettaClient({
-  token: process.env.LETTA_API_KEY
+  token: process.env.LETTA_API_KEY,
   project: "your-project-id" // optional param
 });
 
@@ -287,7 +306,7 @@ interface ChatProps {
   existingMessages?: UIMessage[];
 }
 
-export function StreamingChat({ agentId, existingMessages = [] }: ChatProps) {
+export function Chat({ agentId, existingMessages = [] }: ChatProps) {
   const [input, setInput] = useState('');
 
   const { messages, sendMessage, status } = useChat({
@@ -349,7 +368,7 @@ export function StreamingChat({ agentId, existingMessages = [] }: ChatProps) {
 // app/page.tsx - Streaming chat page
 import { LettaClient } from '@letta-ai/letta-client';
 import { convertToAiSdkMessage } from '@letta-ai/vercel-ai-sdk-provider';
-import { StreamingChat } from './StreamingChat';
+import { Chat } from './Chat';
 
 export default async function HomePage() {
   const agentId = process.env.LETTA_AGENT_ID;
@@ -369,7 +388,7 @@ export default async function HomePage() {
   return (
     <div>
       <h1>Streaming Chat with Letta Agent</h1>
-      <StreamingChat
+      <Chat
         agentId={agentId}
         existingMessages={existingMessages}
       />
@@ -708,6 +727,50 @@ const stream = streamText({
 ```
 
 **Note**: Background executions are useful for complex streaming tasks that may exceed typical request timeouts. See [Letta's long-running guide](https://docs.letta.com/guides/agents/long-running) for more details.
+
+### Stop Conditions
+
+The Vercel AI SDK provides a `stopWhen` parameter to control when generation stops. However, **`stopWhen` only affects what the AI SDK returns to your application—it does not control Letta's backend execution.**
+
+**Important**: If you want to limit the number of steps Letta executes on the backend, use `maxSteps` in `providerOptions.letta.agent.maxSteps` instead of relying on `stopWhen`.
+
+```typescript
+// ❌ This will NOT stop Letta from executing 10 steps on the backend
+const result = await generateText({
+  model: lettaCloud(),
+  messages: [{ role: 'user', content: 'Help me with a task' }],
+  providerOptions: {
+    letta: {
+      agent: {
+        id: 'your-agent-id',
+        maxSteps: 10  // Letta will execute up to 10 steps
+      }
+    }
+  },
+  stopWhen: stepCountIs(5)  // AI SDK stops after 5 steps, but Letta already executed 10
+});
+
+// ✅ This correctly limits Letta to 5 steps
+const result = await generateText({
+  model: lettaCloud(),
+  messages: [{ role: 'user', content: 'Help me with a task' }],
+  providerOptions: {
+    letta: {
+      agent: {
+        id: 'your-agent-id',
+        maxSteps: 5  // Letta will only execute 5 steps
+      }
+    }
+  },
+});
+```
+
+**Why this matters**: When you set `maxSteps: 10` on the Letta side and `stopWhen: stepCountIs(5)` on the AI SDK side:
+- Letta's backend will execute all 10 steps
+- The AI SDK will only return/display the first 5 steps to your application
+- You'll be charged for 10 steps but only see 5 steps in your results
+
+**Best practice**: Set `maxSteps` in `providerOptions.letta.agent.maxSteps` to control Letta's execution, and only use `stopWhen` if you need additional client-side filtering logic.
 
 ### When to Use Each Approach
 

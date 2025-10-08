@@ -5,7 +5,6 @@ import {
 } from "ai";
 import { lettaCloud, lettaLocal } from "@letta-ai/vercel-ai-sdk-provider";
 import { AGENT_ID, TEST_MODE } from "@/app/env-vars";
-import { z } from "zod";
 
 export async function POST(req: Request) {
   const { messages, agentId } = await req.json();
@@ -21,20 +20,29 @@ export async function POST(req: Request) {
     );
   }
 
-  let result;
+  // Select the appropriate provider based on TEST_MODE
+  const provider = TEST_MODE === "local" ? lettaLocal : lettaCloud;
+  console.log(`Using ${TEST_MODE === "local" ? "local" : "cloud"} Letta agent:`, activeAgentId);
 
-  const commonConfig = {
+  const baseModel = provider();
+  const wrappedModel = wrapLanguageModel({
+    model: baseModel,
+    middleware: extractReasoningMiddleware({
+      tagName: "thinking",
+      separator: "\n",
+      startWithReasoning: false,
+    }),
+  });
+
+  const result = generateText({
+    model: wrappedModel,
     tools: {
-      web_search: {
+      web_search: provider.tool("web_search", {
         description: "Search the web",
-        inputSchema: z.any(),
-        execute: async () => "Handled by Letta",
-      },
-      memory_replace: {
+      }),
+      memory_replace: provider.tool("memory_replace", {
         description: "Replace memory content",
-        inputSchema: z.any(),
-        execute: async () => "Handled by Letta",
-      },
+      }),
     },
     providerOptions: {
       letta: {
@@ -42,43 +50,7 @@ export async function POST(req: Request) {
       },
     },
     messages: messages,
-  };
-
-  if (TEST_MODE === "local") {
-    console.log("Using local Letta agent:", activeAgentId);
-    const baseModel = lettaLocal();
-    const wrappedModel = wrapLanguageModel({
-      model: baseModel,
-      middleware: extractReasoningMiddleware({
-        tagName: "thinking",
-        separator: "\n",
-        startWithReasoning: false,
-      }),
-    });
-    result = generateText({
-      model: wrappedModel,
-      tools: commonConfig.tools,
-      providerOptions: commonConfig.providerOptions,
-      messages: commonConfig.messages,
-    });
-  } else {
-    console.log("Using cloud Letta agent:", activeAgentId);
-    const baseModel = lettaCloud();
-    const wrappedModel = wrapLanguageModel({
-      model: baseModel,
-      middleware: extractReasoningMiddleware({
-        tagName: "thinking",
-        separator: "\n",
-        startWithReasoning: false,
-      }),
-    });
-    result = generateText({
-      model: wrappedModel,
-      tools: commonConfig.tools,
-      providerOptions: commonConfig.providerOptions,
-      messages: commonConfig.messages,
-    });
-  }
+  });
 
   try {
     // Wait for the complete result and return it as a UI message response
@@ -114,10 +86,18 @@ export async function POST(req: Request) {
     // Fallback without extractReasoningMiddleware if there's an issue
     console.log("Falling back to basic reasoning...");
     try {
+      const fallbackProvider = TEST_MODE === "local" ? lettaLocal : lettaCloud;
       const fallbackResult = await generateText({
-        model: TEST_MODE === "local" ? lettaLocal() : lettaCloud(),
-        tools: commonConfig.tools,
-        providerOptions: commonConfig.providerOptions,
+        model: fallbackProvider(),
+        tools: {
+          web_search: fallbackProvider.tool("web_search"),
+          memory_replace: fallbackProvider.tool("memory_replace"),
+        },
+        providerOptions: {
+          letta: {
+            agent: { id: activeAgentId },
+          },
+        },
         messages: messages,
       });
 

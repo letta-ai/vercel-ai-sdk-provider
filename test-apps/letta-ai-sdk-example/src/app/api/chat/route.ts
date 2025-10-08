@@ -1,7 +1,6 @@
 import { streamText, convertToModelMessages } from "ai";
 import { lettaCloud, lettaLocal } from "@letta-ai/vercel-ai-sdk-provider";
 import { AGENT_ID, TEST_MODE } from "@/app/env-vars";
-import { z } from "zod";
 
 export async function POST(req: Request) {
   const { messages, agentId } = await req.json();
@@ -20,69 +19,30 @@ export async function POST(req: Request) {
   console.log("=== DEBUG: Messages being sent to Letta ===");
   console.log(JSON.stringify(modelMessages, null, 2));
 
-  let result;
+  // Select the appropriate provider based on TEST_MODE
+  const provider = TEST_MODE === "local" ? lettaLocal : lettaCloud;
+  console.log(`Using ${TEST_MODE === "local" ? "local" : "cloud"} Letta agent:`, activeAgentId);
 
-  if (TEST_MODE === "local") {
-    console.log("Using local Letta agent:", activeAgentId);
-
-    const localConfig = {
-      tools: {
-        memory_insert: lettaLocal.tool("memory_insert"),
-        memory_replace: lettaLocal.tool("memory_replace", {
-          inputSchema: z.any(), // this is a placeholder for the input schema
-        }),
+  const config = {
+    tools: {
+      memory_insert: provider.tool("memory_insert"),
+      memory_replace: provider.tool("memory_replace"),
+    },
+    providerOptions: {
+      letta: {
+        agent: { id: activeAgentId, background: true },
       },
-      providerOptions: {
-        letta: {
-          agent: { id: activeAgentId, background: true },
-        },
-      },
-      messages: modelMessages,
-    };
+    },
+    messages: modelMessages,
+  };
 
-    console.log("=== DEBUG: Tools configured ===");
-    console.log(JSON.stringify(Object.keys(localConfig.tools), null, 2));
+  console.log("=== DEBUG: Tools configured ===");
+  console.log(JSON.stringify(Object.keys(config.tools), null, 2));
 
-    result = streamText({
-      model: lettaLocal(),
-      ...localConfig,
-    });
-
-    // const codingAgent = new Agent({
-    //   model: lettaLocal(),
-    //   tools: {
-    //     /* Your tools */
-    //   },
-    // });
-    // result = codingAgent.stream({
-    //   ...localConfig,
-    // });
-  } else {
-    console.log("Using cloud Letta agent:", activeAgentId);
-
-    const cloudConfig = {
-      tools: {
-        memory_insert: lettaCloud.tool("memory_insert"),
-        memory_replace: lettaCloud.tool("memory_replace", {
-          inputSchema: z.any(), // this is a placeholder for the input schema
-        }),
-      },
-      providerOptions: {
-        letta: {
-          agent: { id: activeAgentId, background: true },
-        },
-      },
-      messages: modelMessages,
-    };
-
-    console.log("=== DEBUG: Tools configured ===");
-    console.log(JSON.stringify(Object.keys(cloudConfig.tools), null, 2));
-
-    result = streamText({
-      model: lettaCloud(),
-      ...cloudConfig,
-    });
-  }
+  const result = streamText({
+    model: provider(),
+    ...config,
+  });
 
   try {
     console.log("=== Creating UI message stream ===");
@@ -112,55 +72,28 @@ export async function POST(req: Request) {
     // Fallback without extractReasoningMiddleware if there's an issue
     console.log("Falling back to basic reasoning...");
     try {
-      if (TEST_MODE === "local") {
-        const localConfig = {
-          tools: {
-            memory_insert: lettaLocal.tool("memory_insert"),
-            memory_replace: lettaLocal.tool("memory_replace", {
-              inputSchema: z.any(),
-            }),
+      const fallbackProvider = TEST_MODE === "local" ? lettaLocal : lettaCloud;
+      const fallbackConfig = {
+        tools: {
+          memory_insert: fallbackProvider.tool("memory_insert"),
+          memory_replace: fallbackProvider.tool("memory_replace"),
+        },
+        providerOptions: {
+          letta: {
+            agent: { id: activeAgentId, background: true },
           },
-          providerOptions: {
-            letta: {
-              agent: { id: activeAgentId, background: true },
-            },
-          },
-          messages: modelMessages,
-        };
+        },
+        messages: modelMessages,
+      };
 
-        const fallbackResult = streamText({
-          model: lettaLocal(),
-          ...localConfig,
-        });
+      const fallbackResult = streamText({
+        model: fallbackProvider(),
+        ...fallbackConfig,
+      });
 
-        return fallbackResult.toUIMessageStreamResponse({
-          sendReasoning: true,
-        });
-      } else {
-        const cloudConfig = {
-          tools: {
-            memory_insert: lettaCloud.tool("memory_insert"),
-            memory_replace: lettaCloud.tool("memory_replace", {
-              inputSchema: z.any(),
-            }),
-          },
-          providerOptions: {
-            letta: {
-              agent: { id: activeAgentId, background: true },
-            },
-          },
-          messages: modelMessages,
-        };
-
-        const fallbackResult = streamText({
-          model: lettaCloud(),
-          ...cloudConfig,
-        });
-
-        return fallbackResult.toUIMessageStreamResponse({
-          sendReasoning: true,
-        });
-      }
+      return fallbackResult.toUIMessageStreamResponse({
+        sendReasoning: true,
+      });
     } catch (fallbackError) {
       console.error("=== FALLBACK ALSO FAILED ===");
       console.error("Fallback error:", fallbackError);
