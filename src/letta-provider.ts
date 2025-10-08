@@ -1,44 +1,7 @@
 import { ProviderV2, LanguageModelV2 } from "@ai-sdk/provider";
 import { LettaClient } from "@letta-ai/letta-client";
 import { LettaChatModel } from "./letta-chat";
-import * as lettaTools from "./letta-tools";
-
-export interface LettaTools {
-  /**
-   * Creates a custom tool placeholder for Letta.
-   * Since Letta handles tool execution on their backend, this creates a placeholder
-   * that satisfies the Vercel AI SDK's type requirements.
-   *
-   * @param name - The name of the tool
-   * @param options - Configuration options for the tool
-   * @returns A tool placeholder compatible with Vercel AI SDK
-   *
-   * @example
-   * ```typescript
-   * const myTool = letta.tools.custom("my_tool", {
-   *   description: "Does something useful",
-   *   inputSchema: z.object({ param: z.string() }),
-   *   execute: async () => "Handled by Letta"
-   * });
-   * ```
-   */
-  custom: typeof lettaTools.custom;
-
-  /**
-   * Creates tool placeholders for one or more prebuilt Letta tools.
-   * Since Letta handles tool execution on their backend, these are placeholders
-   * that satisfy the Vercel AI SDK's type requirements.
-   *
-   * @param toolNames - Names of prebuilt tools to include
-   * @returns A collection of tool placeholders
-   *
-   * @example
-   * ```typescript
-   * const tools = letta.tools.prebuilt("web_search", "core_memory_replace");
-   * ```
-   */
-  prebuilt: typeof lettaTools.prebuilt;
-}
+import { tool } from "./letta-tools";
 
 export interface LettaProvider extends ProviderV2 {
   /**
@@ -50,10 +13,37 @@ export interface LettaProvider extends ProviderV2 {
    * The underlying Letta client for direct API access.
    */
   client: LettaClient;
+
   /**
-   * Tools for the Letta agent.
+   * Creates a tool placeholder for Letta.
+   * Since Letta handles tool execution on their backend, this creates a placeholder
+   * that satisfies the Vercel AI SDK's type requirements.
+   *
+   * @param name - The name of the tool
+   * @param options - Optional configuration options for the tool
+   * @returns A tool placeholder compatible with Vercel AI SDK
+   *
+   * @example
+   * ```typescript
+   * // Basic tool
+   * const webSearch = lettaLocal.tool("web_search");
+   *
+   * // Tool with description
+   * const myTool = lettaLocal.tool("my_custom_tool", {
+   *   description: "Does something useful"
+   * });
+   *
+   * // Tool with description and schema
+   * const analytics = lettaLocal.tool("analytics", {
+   *   description: "Track analytics events",
+   *   inputSchema: z.object({
+   *     event: z.string(),
+   *     properties: z.record(z.any()),
+   *   }),
+   * });
+   * ```
    */
-  tools: LettaTools;
+  tool: typeof tool;
 }
 
 /**
@@ -89,11 +79,7 @@ export function createLetta(options: LettaClient.Options = {}): LettaProvider {
   } as LettaProvider;
 
   provider.client = client;
-
-  provider.tools = {
-    custom: lettaTools.custom,
-    prebuilt: lettaTools.prebuilt,
-  };
+  provider.tool = tool;
 
   return provider;
 }

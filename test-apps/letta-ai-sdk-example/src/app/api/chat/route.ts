@@ -27,8 +27,8 @@ export async function POST(req: Request) {
 
     const localConfig = {
       tools: {
-        memory_insert: lettaLocal.tools.prebuilt("memory_insert"),
-        memory_replace: lettaLocal.tools.custom("memory_replace", {
+        memory_insert: lettaLocal.tool("memory_insert"),
+        memory_replace: lettaLocal.tool("memory_replace", {
           inputSchema: z.any(), // this is a placeholder for the input schema
         }),
       },
@@ -62,8 +62,8 @@ export async function POST(req: Request) {
 
     const cloudConfig = {
       tools: {
-        memory_insert: lettaCloud.tools.prebuilt("memory_insert"),
-        memory_replace: lettaCloud.tools.custom("memory_replace", {
+        memory_insert: lettaCloud.tool("memory_insert"),
+        memory_replace: lettaCloud.tool("memory_replace", {
           inputSchema: z.any(), // this is a placeholder for the input schema
         }),
       },
@@ -115,8 +115,8 @@ export async function POST(req: Request) {
       if (TEST_MODE === "local") {
         const localConfig = {
           tools: {
-            memory_insert: lettaLocal.tools.prebuilt("memory_insert"),
-            memory_replace: lettaLocal.tools.custom("memory_replace", {
+            memory_insert: lettaLocal.tool("memory_insert"),
+            memory_replace: lettaLocal.tool("memory_replace", {
               inputSchema: z.any(),
             }),
           },
@@ -139,8 +139,8 @@ export async function POST(req: Request) {
       } else {
         const cloudConfig = {
           tools: {
-            memory_insert: lettaCloud.tools.prebuilt("memory_insert"),
-            memory_replace: lettaCloud.tools.custom("memory_replace", {
+            memory_insert: lettaCloud.tool("memory_insert"),
+            memory_replace: lettaCloud.tool("memory_replace", {
               inputSchema: z.any(),
             }),
           },
