@@ -14,13 +14,17 @@ export function convertToLettaMessage(
               text: part.text,
             };
           default:
+            // Skip tool invocations and unsupported parts in user inputs
+            if (typeof part.type === "string" && part.type.startsWith("tool-")) {
+              return undefined as any;
+            }
             throw new Error(`Content type ${part.type} not supported`);
         }
-      });
+      }).filter(Boolean);
 
       return {
         role: "user" as const,
-        content: content,
+        content: content as any,
       };
     }
 
@@ -33,9 +37,32 @@ export function convertToLettaMessage(
     }
 
     if (message.role === "system") {
+      // Support both string and parts array for system content
+      if (typeof message.content === "string") {
+        return {
+          role: "system" as const,
+          content: message.content,
+        };
+      }
+      const sysContent: any = message.content as any;
+      const content = Array.isArray(sysContent)
+        ? (sysContent as any[])
+            .map((part: any) => {
+              switch (part.type) {
+                case "text":
+                  return { type: "text" as const, text: part.text };
+                default:
+                  if (typeof part.type === "string" && part.type.startsWith("tool-")) {
+                    return undefined as any;
+                  }
+                  throw new Error(`Content type ${part.type} not supported`);
+              }
+            })
+            .filter(Boolean)
+        : sysContent;
       return {
         role: "system" as const,
-        content: message.content,
+        content: content as any,
       };
     }
 

@@ -13,3 +13,5 @@ public/dist
 test-results
 dist
 .idea
+# Ignore cloned ai-chatbot test app
+/test-apps/vercel-ai-chatbot/
