@@ -218,5 +218,19 @@ describe("Letta Provider", () => {
       expect(customTool).toHaveProperty("description");
       expect(customTool.description).toBe("Custom tool");
     });
+
+    it("should create tools with custom input schemas", () => {
+      const { z } = require("zod");
+      const toolWithSchema = lettaCloud.tool("analytics", {
+        description: "Track events",
+        inputSchema: z.object({
+          event: z.string(),
+          properties: z.record(z.string(), z.any()),
+        }),
+      });
+
+      expect(toolWithSchema.inputSchema).toBeDefined();
+      expect(toolWithSchema.description).toBe("Track events");
+    });
   });
 });

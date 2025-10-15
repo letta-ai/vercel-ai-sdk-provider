@@ -9,9 +9,8 @@ dist-ssr
 .cache
 server/dist
 public/dist
-.turbo
 test-results
 dist
 .idea
-# Ignore cloned ai-chatbot test app
-/test-apps/vercel-ai-chatbot/
+# Ignore cloned test apps
+/test-apps/

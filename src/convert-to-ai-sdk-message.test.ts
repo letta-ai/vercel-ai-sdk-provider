@@ -152,6 +152,8 @@ describe("convertToAiSdkMessage", () => {
     expect((result[0].parts[0] as any).type).toBe("tool-ToolName");
     expect((result[0].parts[0] as any).toolCallId).toBe("tool-1");
     expect((result[0].parts[0] as any).state).toBe("output-available");
+    expect((result[0].parts[0] as any).input).toBeDefined();
+    expect((result[0].parts[0] as any).output).toBeDefined();
   });
 
   it("should convert tool return messages correctly", () => {
@@ -174,6 +176,8 @@ describe("convertToAiSdkMessage", () => {
     expect(part.type).toBe("tool-ToolName");
     expect(part.toolCallId).toBe("tool-1");
     expect(part.state).toBe("output-available");
+    expect(part.input).toBeDefined();
+    expect(part.output).toBeDefined();
   });
 
   it("should handle messages with the same id having both reasoning and message", () => {
