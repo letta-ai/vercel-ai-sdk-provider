@@ -2,6 +2,13 @@ import { streamText, convertToModelMessages } from "ai";
 import { lettaCloud, lettaLocal } from "@letta-ai/vercel-ai-sdk-provider";
 import { AGENT_ID, TEST_MODE } from "@/app/env-vars";
 
+// Helper to extract text content from message
+function extractMessageContent(message: { content: string | Array<{ type: string; text?: string }> }): string {
+  return typeof message.content === 'string'
+    ? message.content
+    : message.content.map(part => part.type === 'text' ? (part.text ?? '') : '').join(' ');
+}
+
 export async function POST(req: Request) {
   const { messages, agentId } = await req.json();
 
@@ -27,9 +34,7 @@ export async function POST(req: Request) {
 
   // Extract content from the last message for prompt
   const lastMessage = modelMessages[modelMessages.length - 1];
-  const promptContent = typeof lastMessage.content === 'string'
-    ? lastMessage.content
-    : lastMessage.content.map(part => part.type === 'text' ? part.text : '').join('');
+  const promptContent = extractMessageContent(lastMessage as any);
 
   console.log('-> promptContent:', promptContent)
 
@@ -65,13 +70,13 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("=== ERROR creating UI message stream ===");
     console.error("Error:", error);
-    console.error(
-      "Error details:",
-      JSON.stringify(error, Object.getOwnPropertyNames(error)),
-    );
+    console.error("Error details:", {
+      message: error instanceof Error ? error.message : String(error),
+      name: error instanceof Error ? error.name : "unknown",
+    });
 
     // Check if this is a Letta API error
-    if (error instanceof Error && error.message.includes("Status code:")) {
+    if (error instanceof Error && (error.message.includes("Status code:") || 'statusCode' in (error as any) || 'code' in (error as any))) {
       console.error("=== This is a Letta API error ===");
       console.error("The error is coming from Letta's backend, not our SDK");
       console.error(
@@ -79,61 +84,20 @@ export async function POST(req: Request) {
       );
     }
 
-    // Fallback without extractReasoningMiddleware if there's an issue
-    console.log("Falling back to basic reasoning...");
-    try {
-      const fallbackProvider = TEST_MODE === "local" ? lettaLocal : lettaCloud;
-
-      // Extract content from the last message for prompt
-      const fallbackLastMessage = modelMessages[modelMessages.length - 1];
-      const fallbackPrompt = typeof fallbackLastMessage.content === 'string'
-        ? fallbackLastMessage.content
-        : fallbackLastMessage.content.map(part => part.type === 'text' ? part.text : '').join('');
-
-      const fallbackConfig = {
-        tools: {
-          memory_insert: fallbackProvider.tool("memory_insert"),
-          memory_replace: fallbackProvider.tool("memory_replace"),
-        },
-        providerOptions: {
-          letta: {
-            agent: { id: activeAgentId, background: true },
-          },
-        },
-        prompt: fallbackPrompt,
-      };
-
-      const fallbackResult = streamText({
-        model: fallbackProvider(),
-        ...fallbackConfig,
-      });
-
-      return fallbackResult.toUIMessageStreamResponse({
-        sendReasoning: true,
-      });
-    } catch (fallbackError) {
-      console.error("=== FALLBACK ALSO FAILED ===");
-      console.error("Fallback error:", fallbackError);
-
-      return new Response(
-        JSON.stringify({
-          error: "Failed to create UI message stream",
-          details: error instanceof Error ? error.message : String(error),
-          fallbackError:
-            fallbackError instanceof Error
-              ? fallbackError.message
-              : String(fallbackError),
-          stack: error instanceof Error ? error.stack : undefined,
-          errorType:
-            error instanceof Error ? error.constructor.name : typeof error,
-          helpText:
-            "If you see 'Function call send_message missing message argument', this is a Letta agent configuration issue. Check your agent's tools in the Letta UI.",
-        }),
-        {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        },
-      );
-    }
+    return new Response(
+      JSON.stringify({
+        error: "Failed to create UI message stream",
+        details: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        errorType:
+          error instanceof Error ? error.constructor.name : typeof error,
+        helpText:
+          "If you see 'Function call send_message missing message argument', this is a Letta agent configuration issue. Check your agent's tools in the Letta UI.",
+      }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
 }

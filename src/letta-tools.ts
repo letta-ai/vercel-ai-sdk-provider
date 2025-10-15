@@ -43,7 +43,7 @@ export function tool(
   const {
     description = `${name} tool`,
     inputSchema = z.any(),
-    execute = () => "Handled by Letta",
+    execute = async (_args?: unknown, _ctx?: unknown) => "Handled by Letta",
   } = options;
 
   return {

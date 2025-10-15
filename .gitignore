@@ -9,7 +9,8 @@ dist-ssr
 .cache
 server/dist
 public/dist
-.turbo
 test-results
 dist
 .idea
+# Ignore cloned test apps
+/test-apps/

@@ -140,7 +140,7 @@ describe("letta-tools", () => {
           description: "Track analytics events",
           inputSchema: z.object({
             event: z.string(),
-            properties: z.record(z.any()),
+properties: z.record(z.string(), z.any()),
           }),
         }),
         database_query: tool("database_query", {

@@ -1,5 +1,7 @@
 # AI SDK - Letta Provider
 
+> Note: This fork is updated for Vercel AI SDK v5 (ai@5). Until the upstream repository merges these changes, use this fork to test and integrate with AI SDK v5.
+
 ![NPM Version](https://img.shields.io/npm/v/%40letta-ai%2Fvercel-ai-sdk-provider)
 
 The official Vercel AI SDK provider for [Letta](https://www.letta.com) - the platform for building stateful AI agents with long-term memory. This provider enables you to use Letta agents seamlessly with the Vercel AI SDK ecosystem.
@@ -385,6 +387,43 @@ export default async function HomePage() {
 
 
 
+## AI SDK v5 Compatibility
+
+This provider is compatible with AI SDK v5 and uses the updated UI message and tool part structures.
+
+Key changes you should be aware of when consuming the provider in v5:
+
+- Tool invocation parts are typed per tool: `type: "tool-${toolName}"` (the old generic `tool-invocation` part has been removed from v5 UI types).
+- Tool results should be read from `output` (not `result`). Error cases use `state: 'output-error'` and may include `errorText`.
+- Reasoning parts live in the UI message `parts` array with `{ type: 'reasoning', text }`.
+- File attachments use a standard `file` part with `{ type: 'file', url, mediaType }`.
+- Import UI utilities (if needed) from `ai` directly — `@ai-sdk/ui-utils` is removed in v5.
+- Use `providerOptions` (not `providerMetadata`) when passing provider-specific options at call time.
+- If you specify token limits, prefer `maxOutputTokens` over the legacy `maxTokens`.
+
+Examples (reading tool parts and files from UI messages):
+
+```ts
+// Tool parts (v5): type is "tool-<name>"
+const isToolPart = (part: { type: string }): boolean => part.type.startsWith('tool-');
+
+// File parts (v5): standard file attachment with URL and media type
+const isFilePart = (part: any): part is { type: 'file'; url: string; mediaType: string } => part?.type === 'file' && typeof part.url === 'string';
+
+message.parts?.forEach((part) => {
+  if (isToolPart(part)) {
+    // state can be: 'input-available' | 'output-available' | 'output-error'
+    if ('toolCallId' in part) console.log('Tool call:', part.toolCallId);
+    if ('input' in part && part.input != null) console.log('Input:', part.input);
+    if ('output' in part && part.output != null) console.log('Output:', part.output);
+    if ('errorText' in part && part.errorText) console.error('Tool Error:', part.errorText);
+  }
+  if (isFilePart(part)) {
+    console.log('File URL:', part.url, 'Media Type:', part.mediaType);
+  }
+});
+```
+
 ## Advanced Features
 
 ### Message Roles (System vs User)
@@ -671,12 +710,11 @@ Tool calls appear in message parts as named tool types (e.g., `tool-web_search`,
 ```typescript
 import { ToolUIPart } from 'ai';
 
-// Type guard for named tool parts (excludes generic tool-invocation type)
+// Type guard for named tool parts (AI SDK v5)
 const isNamedTool = (part: {
   type: string;
   [key: string]: unknown;
-}): part is ToolUIPart =>
-  part.type.startsWith("tool-") && part.type !== "tool-invocation";
+}): part is ToolUIPart => part.type.startsWith("tool-");
 
 // Filter tool parts from message parts
 const toolParts = message.parts?.filter(isNamedTool) || [];
@@ -686,7 +724,7 @@ toolParts.forEach(part => {
 
   // Safely access properties that may exist
   if ("state" in part) {
-    console.log('State:', part.state); // e.g., "input-available", "output-available"
+    console.log('State:', part.state); // e.g., "input-available", "output-available", "output-error"
   }
 
   if ("toolCallId" in part) {
