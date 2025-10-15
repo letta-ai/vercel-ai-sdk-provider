@@ -1,5 +1,7 @@
 # AI SDK - Letta Provider
 
+> Note: This fork is updated for Vercel AI SDK v5 (ai@5). Until the upstream repository merges these changes, use this fork to test and integrate with AI SDK v5.
+
 ![NPM Version](https://img.shields.io/npm/v/%40letta-ai%2Fvercel-ai-sdk-provider)
 
 The official Vercel AI SDK provider for [Letta](https://www.letta.com) - the platform for building stateful AI agents with long-term memory. This provider enables you to use Letta agents seamlessly with the Vercel AI SDK ecosystem.
