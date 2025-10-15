@@ -15,32 +15,38 @@ const isNamedTool = (part: {
 const isReasoningPart = (part: {
   type: string;
   [key: string]: unknown;
-}): part is { type: string; text: string; source?: string } =>
+}): part is {
+  type: string;
+  text: string;
+  providerMetadata?: { letta?: { source?: string; [key: string]: unknown } };
+} =>
   part.type === "reasoning" && "text" in part && typeof part.text === "string";
+
+// Letta reasoning source constants
+const LETTA_SOURCE = {
+  REASONER_MODEL: 'reasoner_model',
+  NON_REASONER_MODEL: 'non_reasoner_model',
+} as const;
 
 // Helper to determine reasoning source
 const getReasoningSource = (part: {
   type: string;
   text: string;
-  source?: string;
-  providerMetadata?: { reasoning?: { source?: string }; source?: string };
+  providerMetadata?: { letta?: { source?: string; [key: string]: unknown } };
 }) => {
-  // Use the source field from Letta ReasoningMessage via providerMetadata
+  // Use the source field from Letta ReasoningMessage via providerMetadata.letta
   // "reasoner_model" = model-level reasoning (from language model itself)
   // "non_reasoner_model" = agent-level reasoning (from Letta platform)
-  const source =
-    part.providerMetadata?.reasoning?.source ||
-    part.providerMetadata?.source ||
-    part.source;
+  const source = part.providerMetadata?.letta?.source;
 
-  if (source === "reasoner_model") {
+  if (source === LETTA_SOURCE.REASONER_MODEL) {
     return {
       source: "model" as const,
       text: part.text,
     };
   }
 
-  if (source === "non_reasoner_model") {
+  if (source === LETTA_SOURCE.NON_REASONER_MODEL) {
     return {
       source: "agent" as const,
       text: part.text,
@@ -146,7 +152,13 @@ export function Chat(props: ChatProps) {
           >
             <div className="flex justify-between items-center mb-2">
               <div className="font-bold text-lg">
-                {message.role === "user" ? "👤 User" : "🤖 Assistant"}
+                <span role={message.role === "system" ? "status" : undefined}>
+                  {message.role === "user"
+                    ? "👤 User"
+                    : message.role === "system"
+                      ? "⚙️ System"
+                      : "🤖 Assistant"}
+                </span>
               </div>
               <div className="text-xs text-gray-500">ID: {message.id}</div>
             </div>
@@ -157,9 +169,21 @@ export function Chat(props: ChatProps) {
                 ? message.parts.map((part, index) => (
                     <div key={index}>
                       {/* Text parts - regular message content */}
-                      {part.type === "text" && (
-                        <div className="p-3 bg-gray-50 rounded-lg">
-                          <div className="text-gray-800">{part.text}</div>
+{part.type === "text" && (
+                        <div className={`p-3 rounded-lg ${
+                          message.role === "system"
+                            ? "bg-yellow-50 border-l-4 border-yellow-400"
+                            : "bg-gray-50"
+                        }`}>
+                          <div className={`${
+                            message.role === "system"
+                              ? "text-yellow-900 text-sm"
+                              : "text-gray-800"
+                          }`}
+                          role={message.role === "system" ? "status" : undefined}
+                          aria-label={message.role === "system" ? "System message" : undefined}>
+                            {part.text}
+                          </div>
                         </div>
                       )}
 
@@ -167,6 +191,8 @@ export function Chat(props: ChatProps) {
                       {isReasoningPart(part) &&
                         (() => {
                           const { source, text } = getReasoningSource(part);
+                          const rawSource =
+                            part.providerMetadata?.letta?.source;
 
                           // Model reasoning
                           if (source === "model" && showModelReasoning) {
@@ -177,12 +203,28 @@ export function Chat(props: ChatProps) {
                                     🧠 Model Reasoning
                                   </span>
                                   <span className="ml-2 text-xs text-purple-500">
-                                    (extracted from language model)
+                                    {rawSource
+                                      ? `(source: ${rawSource})`
+                                      : "(extracted from language model)"}
                                   </span>
                                 </div>
                                 <div className="text-purple-800 text-sm italic">
                                   {text}
                                 </div>
+                                {part.providerMetadata?.letta && (
+                                  <details className="mt-2">
+                                    <summary className="cursor-pointer text-xs text-purple-600 hover:text-purple-800">
+                                      Show Letta Metadata
+                                    </summary>
+                                    <pre className="mt-1 text-xs bg-purple-100 p-2 rounded overflow-x-auto">
+                                      {JSON.stringify(
+                                        part.providerMetadata.letta,
+                                        null,
+                                        2,
+                                      )}
+                                    </pre>
+                                  </details>
+                                )}
                               </div>
                             );
                           }
@@ -196,12 +238,27 @@ export function Chat(props: ChatProps) {
                                     🤖 Agent Reasoning
                                   </span>
                                   <span className="ml-2 text-xs text-blue-500">
-                                    (from Letta agent)
+                                    (source: {rawSource || "non_reasoner_model"}
+                                    )
                                   </span>
                                 </div>
                                 <div className="text-blue-800 text-sm">
                                   {text}
                                 </div>
+                                {part.providerMetadata?.letta && (
+                                  <details className="mt-2">
+                                    <summary className="cursor-pointer text-xs text-blue-600 hover:text-blue-800">
+                                      Show Letta Metadata
+                                    </summary>
+                                    <pre className="mt-1 text-xs bg-blue-100 p-2 rounded overflow-x-auto">
+                                      {JSON.stringify(
+                                        part.providerMetadata.letta,
+                                        null,
+                                        2,
+                                      )}
+                                    </pre>
+                                  </details>
+                                )}
                               </div>
                             );
                           }
@@ -267,8 +324,16 @@ export function Chat(props: ChatProps) {
                   ))
                 : /* Fallback for legacy Message format without parts */
                   (message as { content?: string }).content && (
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <div className="text-gray-800">
+                    <div className={`p-3 rounded-lg ${
+                      message.role === "system"
+                        ? "bg-yellow-50 border-l-4 border-yellow-400"
+                        : "bg-gray-50"
+                    }`}>
+                      <div className={`${
+                        message.role === "system"
+                          ? "text-yellow-900 text-sm"
+                          : "text-gray-800"
+                      }`}>
                         {(message as { content?: string }).content}
                       </div>
                     </div>

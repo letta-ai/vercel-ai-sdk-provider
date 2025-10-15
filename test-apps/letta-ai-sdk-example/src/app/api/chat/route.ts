@@ -1,11 +1,13 @@
-import {
-  streamText,
-  convertToModelMessages,
-  Experimental_Agent as Agent,
-} from "ai";
+import { streamText, convertToModelMessages } from "ai";
 import { lettaCloud, lettaLocal } from "@letta-ai/vercel-ai-sdk-provider";
 import { AGENT_ID, TEST_MODE } from "@/app/env-vars";
-import { z } from "zod";
+
+// Helper to extract text content from message
+function extractMessageContent(message: { content: string | Array<{ type: string; text?: string }> }): string {
+  return typeof message.content === 'string'
+    ? message.content
+    : message.content.map(part => part.type === 'text' ? (part.text ?? '') : '').join(' ');
+}
 
 export async function POST(req: Request) {
   const { messages, agentId } = await req.json();
@@ -19,102 +21,83 @@ export async function POST(req: Request) {
     );
   }
 
+  console.log('-> messages', messages)
+
   const modelMessages = convertToModelMessages(messages);
 
-  let result;
+  console.log("=== DEBUG: Messages being sent to Letta ===");
+  console.log(JSON.stringify(modelMessages, null, 2));
 
-  const commonConfig = {
+  // Select the appropriate provider based on TEST_MODE
+  const provider = TEST_MODE === "local" ? lettaLocal : lettaCloud;
+  console.log(`Using ${TEST_MODE === "local" ? "local" : "cloud"} Letta agent:`, activeAgentId);
+
+  // Extract content from the last message for prompt
+  const lastMessage = modelMessages[modelMessages.length - 1];
+  const promptContent = extractMessageContent(lastMessage as any);
+
+  console.log('-> promptContent:', promptContent)
+
+  const config = {
     tools: {
-      web_search: {
-        description: "Search the web",
-        inputSchema: z.any(),
-        execute: async () => "Handled by Letta",
-      },
-      memory_replace: {
-        description: "Replace memory content",
-        inputSchema: z.any(),
-        execute: async () => "Handled by Letta",
-      },
-      memory_insert: {
-        description: "Insert memory content",
-        inputSchema: z.any(),
-        execute: async () => "Handled by Letta",
-      },
+      memory_insert: provider.tool("memory_insert"),
+      memory_replace: provider.tool("memory_replace"),
     },
     providerOptions: {
       letta: {
         agent: { id: activeAgentId, background: true },
       },
     },
-    messages: modelMessages,
+    prompt: promptContent,
   };
 
-  if (TEST_MODE === "local") {
-    console.log("Using local Letta agent:", activeAgentId);
-    result = streamText({
-      model: lettaLocal(),
-      ...commonConfig,
-    });
+  console.log("=== DEBUG: Tools configured ===");
+  console.log(JSON.stringify(Object.keys(config.tools), null, 2));
 
-    // const codingAgent = new Agent({
-    //   model: lettaLocal(),
-    //   tools: {
-    //     /* Your tools */
-    //   },
-    // });
-    // result = codingAgent.stream({
-    //   ...commonConfig,
-    // });
-  } else {
-    console.log("Using cloud Letta agent:", activeAgentId);
-    result = streamText({
-      model: lettaCloud(),
-      ...commonConfig,
-    });
-  }
+  const result = streamText({
+    model: provider(),
+    ...config,
+  });
 
   try {
+    console.log("=== Creating UI message stream ===");
     const response = result.toUIMessageStreamResponse({
       sendReasoning: true, // Include Letta agent reasoning
     });
 
+    console.log("=== Stream created successfully ===");
     return response;
   } catch (error) {
-    console.error("Error creating UI message stream response:", error);
-    console.error(
-      "Error details:",
-      JSON.stringify(error, Object.getOwnPropertyNames(error)),
-    );
+    console.error("=== ERROR creating UI message stream ===");
+    console.error("Error:", error);
+    console.error("Error details:", {
+      message: error instanceof Error ? error.message : String(error),
+      name: error instanceof Error ? error.name : "unknown",
+    });
 
-    // Fallback without extractReasoningMiddleware if there's an issue
-    console.log("Falling back to basic reasoning...");
-    try {
-      const fallbackResult = streamText({
-        model: TEST_MODE === "local" ? lettaLocal() : lettaCloud(),
-        ...commonConfig,
-      });
-
-      return fallbackResult.toUIMessageStreamResponse({
-        sendReasoning: true,
-      });
-    } catch (fallbackError) {
-      return new Response(
-        JSON.stringify({
-          error: "Failed to create UI message stream",
-          details: error instanceof Error ? error.message : String(error),
-          fallbackError:
-            fallbackError instanceof Error
-              ? fallbackError.message
-              : String(fallbackError),
-          stack: error instanceof Error ? error.stack : undefined,
-          errorType:
-            error instanceof Error ? error.constructor.name : typeof error,
-        }),
-        {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        },
+    // Check if this is a Letta API error
+    if (error instanceof Error && (error.message.includes("Status code:") || 'statusCode' in (error as any) || 'code' in (error as any))) {
+      console.error("=== This is a Letta API error ===");
+      console.error("The error is coming from Letta's backend, not our SDK");
+      console.error(
+        "Common causes: tool misconfiguration, missing required arguments, agent setup issues",
       );
     }
+
+    return new Response(
+      JSON.stringify({
+        error: "Failed to create UI message stream",
+        details: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        errorType:
+          error instanceof Error ? error.constructor.name : typeof error,
+        helpText:
+          "If you see 'Function call send_message missing message argument', this is a Letta agent configuration issue. Check your agent's tools in the Letta UI.",
+      }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
 }

@@ -5,15 +5,30 @@ import {
 } from "ai";
 import { lettaCloud, lettaLocal } from "@letta-ai/vercel-ai-sdk-provider";
 import { AGENT_ID, TEST_MODE } from "@/app/env-vars";
-import { z } from "zod";
 
 export async function POST(req: Request) {
   const { messages, agentId } = await req.json();
 
-  console.log("messages", messages);
+  console.log("messages received:", Array.isArray(messages) ? messages.length : 0);
 
   // Use agentId from request body if provided, otherwise fall back to env var
   const activeAgentId = agentId || AGENT_ID;
+
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return new Response(JSON.stringify({ error: "messages array is required" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const extractText = (msg: any) =>
+    typeof msg?.content === "string"
+      ? msg.content
+      : msg?.content?.map?.((part: any) => (part?.type === "text" ? part.text : "")).join(" ") || "";
+
+  // Extract content from the last message for prompt
+  const lastMessage = messages[messages.length - 1];
+  const promptContent = extractText(lastMessage);
 
   if (!activeAgentId) {
     throw new Error(
@@ -21,64 +36,37 @@ export async function POST(req: Request) {
     );
   }
 
-  let result;
+  // Select the appropriate provider based on TEST_MODE
+  const provider = TEST_MODE === "local" ? lettaLocal : lettaCloud;
+  console.log(`Using ${TEST_MODE === "local" ? "local" : "cloud"} Letta agent:`, activeAgentId);
 
-  const commonConfig = {
+  const baseModel = provider();
+  const wrappedModel = wrapLanguageModel({
+    model: baseModel,
+    middleware: extractReasoningMiddleware({
+      tagName: "thinking",
+      separator: "\n",
+      startWithReasoning: false,
+    }),
+  });
+
+  const result = generateText({
+    model: wrappedModel,
     tools: {
-      web_search: {
+      web_search: provider.tool("web_search", {
         description: "Search the web",
-        inputSchema: z.any(),
-        execute: async () => "Handled by Letta",
-      },
-      memory_replace: {
+      }),
+      memory_replace: provider.tool("memory_replace", {
         description: "Replace memory content",
-        inputSchema: z.any(),
-        execute: async () => "Handled by Letta",
-      },
+      }),
     },
     providerOptions: {
       letta: {
         agent: { id: activeAgentId },
       },
     },
-    messages: messages,
-  };
-
-  if (TEST_MODE === "local") {
-    console.log("Using local Letta agent:", activeAgentId);
-    const baseModel = lettaLocal();
-    const wrappedModel = wrapLanguageModel({
-      model: baseModel,
-      middleware: extractReasoningMiddleware({
-        tagName: "thinking",
-        separator: "\n",
-        startWithReasoning: false,
-      }),
-    });
-    result = generateText({
-      model: wrappedModel,
-      tools: commonConfig.tools,
-      providerOptions: commonConfig.providerOptions,
-      messages: commonConfig.messages,
-    });
-  } else {
-    console.log("Using cloud Letta agent:", activeAgentId);
-    const baseModel = lettaCloud();
-    const wrappedModel = wrapLanguageModel({
-      model: baseModel,
-      middleware: extractReasoningMiddleware({
-        tagName: "thinking",
-        separator: "\n",
-        startWithReasoning: false,
-      }),
-    });
-    result = generateText({
-      model: wrappedModel,
-      tools: commonConfig.tools,
-      providerOptions: commonConfig.providerOptions,
-      messages: commonConfig.messages,
-    });
-  }
+    prompt: promptContent,
+  });
 
   try {
     // Wait for the complete result and return it as a UI message response
@@ -105,20 +93,31 @@ export async function POST(req: Request) {
       messages: [message],
     });
   } catch (error) {
-    console.error("Error generating text:", error);
-    console.error(
-      "Error details:",
-      JSON.stringify(error, Object.getOwnPropertyNames(error)),
-    );
+    console.error("Error generating text:", {
+      message: error instanceof Error ? error.message : String(error),
+      name: error instanceof Error ? error.name : "unknown",
+    });
 
     // Fallback without extractReasoningMiddleware if there's an issue
     console.log("Falling back to basic reasoning...");
     try {
+      const fallbackProvider = TEST_MODE === "local" ? lettaLocal : lettaCloud;
+
+      // Reuse previously computed prompt
+      const fallbackPrompt = promptContent;
+
       const fallbackResult = await generateText({
-        model: TEST_MODE === "local" ? lettaLocal() : lettaCloud(),
-        tools: commonConfig.tools,
-        providerOptions: commonConfig.providerOptions,
-        messages: messages,
+        model: fallbackProvider(),
+        tools: {
+          web_search: fallbackProvider.tool("web_search"),
+          memory_replace: fallbackProvider.tool("memory_replace"),
+        },
+        providerOptions: {
+          letta: {
+            agent: { id: activeAgentId },
+          },
+        },
+        prompt: fallbackPrompt,
       });
 
       const message = {

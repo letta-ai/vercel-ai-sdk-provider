@@ -141,7 +141,7 @@ export class LettaChatModel implements LanguageModelV2 {
       if (message.messageType === "tool_call_message") {
         content.push({
           type: "tool-call",
-          toolCallId: message.id,
+          toolCallId: message.toolCall?.toolCallId || message.id,
           toolName: message.name || "",
           input: message.toolCall?.arguments || "",
         });
@@ -152,7 +152,10 @@ export class LettaChatModel implements LanguageModelV2 {
           type: "reasoning",
           text: message.reasoning,
           providerMetadata: {
-            reasoning: { source: (message as any).source || "" },
+            letta: {
+              reasoning: message.reasoning,
+              source: (message as any).source || "",
+            },
           },
         });
       }
@@ -219,13 +222,30 @@ export class LettaChatModel implements LanguageModelV2 {
           // Start the stream with warnings (if any)
           controller.enqueue({
             type: "stream-start",
-            warnings: [],
+            warnings,
           });
 
           let currentTextId: string | null = null;
           let currentReasoningId: string | null = null;
 
           for await (const message of response) {
+            // Normalize date once per message
+            const rawDate: unknown = (message as any).date;
+            let msgDateIso: string | null = null;
+            if (rawDate instanceof Date) {
+              msgDateIso = rawDate.toISOString();
+            } else if (typeof rawDate === "string" || typeof rawDate === "number") {
+              const d = new Date(rawDate as any);
+              if (!Number.isNaN(d.getTime())) {
+                msgDateIso = d.toISOString();
+              } else if (typeof rawDate === "string") {
+                // pass-through unparseable string
+                msgDateIso = rawDate;
+              } else {
+                msgDateIso = null;
+              }
+            }
+
             if (
               message.messageType === "assistant_message" &&
               message.content
@@ -251,12 +271,48 @@ export class LettaChatModel implements LanguageModelV2 {
                     controller.enqueue({
                       type: "text-end",
                       id: currentTextId,
+                      providerMetadata: {
+                        letta: {
+                          id: message.id,
+                          date: msgDateIso,
+                          name: message.name ?? null,
+                          messageType: message.messageType,
+                          otid: message.otid ?? null,
+                          senderId: message.senderId ?? null,
+                          stepId: message.stepId ?? null,
+                          isErr: message.isErr ?? null,
+                          seqId: message.seqId ?? null,
+                          runId: message.runId ?? null,
+                          content:
+                            typeof message.content === "string"
+                              ? message.content
+                              : JSON.stringify(message.content),
+                        },
+                      },
                     });
                   }
 
                   controller.enqueue({
                     type: "text-start",
                     id: messageId,
+                    providerMetadata: {
+                      letta: {
+                        id: message.id,
+                        date: msgDateIso,
+                        name: message.name ?? null,
+                        messageType: message.messageType,
+                        otid: message.otid ?? null,
+                        senderId: message.senderId ?? null,
+                        stepId: message.stepId ?? null,
+                        isErr: message.isErr ?? null,
+                        seqId: message.seqId ?? null,
+                        runId: message.runId ?? null,
+                        content:
+                          typeof message.content === "string"
+                            ? message.content
+                            : JSON.stringify(message.content),
+                      },
+                    },
                   });
                   currentTextId = messageId;
                 }
@@ -266,6 +322,24 @@ export class LettaChatModel implements LanguageModelV2 {
                   type: "text-delta",
                   id: messageId,
                   delta: textContent,
+                  providerMetadata: {
+                    letta: {
+                      id: message.id,
+                      date: msgDateIso,
+                      name: message.name ?? null,
+                      messageType: message.messageType,
+                      otid: message.otid ?? null,
+                      senderId: message.senderId ?? null,
+                      stepId: message.stepId ?? null,
+                      isErr: message.isErr ?? null,
+                      seqId: message.seqId ?? null,
+                      runId: message.runId ?? null,
+                      content:
+                        typeof message.content === "string"
+                          ? message.content
+                          : JSON.stringify(message.content),
+                    },
+                  },
                 });
               }
             }
@@ -292,6 +366,22 @@ export class LettaChatModel implements LanguageModelV2 {
                     controller.enqueue({
                       type: "reasoning-end",
                       id: currentReasoningId,
+                      providerMetadata: {
+                        letta: {
+                          id: message.id,
+                          date: msgDateIso,
+                          name: message.name ?? null,
+                          messageType: message.messageType,
+                          otid: message.otid ?? null,
+                          senderId: message.senderId ?? null,
+                          stepId: message.stepId ?? null,
+                          isErr: message.isErr ?? null,
+                          seqId: message.seqId ?? null,
+                          runId: message.runId ?? null,
+                          reasoning: message.reasoning,
+                          source: message.source ?? null,
+                        },
+                      },
                     });
                   }
 
@@ -299,7 +389,20 @@ export class LettaChatModel implements LanguageModelV2 {
                     type: "reasoning-start",
                     id: reasoningId,
                     providerMetadata: {
-                      reasoning: { source: (message as any).source || "" },
+                      letta: {
+                        id: message.id,
+                        date: msgDateIso,
+                        name: message.name ?? null,
+                        messageType: message.messageType,
+                        otid: message.otid ?? null,
+                        senderId: message.senderId ?? null,
+                        stepId: message.stepId ?? null,
+                        isErr: message.isErr ?? null,
+                        seqId: message.seqId ?? null,
+                        runId: message.runId ?? null,
+                        reasoning: message.reasoning,
+                        source: message.source ?? null,
+                      },
                     },
                   });
                   currentReasoningId = reasoningId;
@@ -311,7 +414,20 @@ export class LettaChatModel implements LanguageModelV2 {
                   id: reasoningId,
                   delta: textContent,
                   providerMetadata: {
-                    reasoning: { source: message.source || "" },
+                    letta: {
+                      id: message.id,
+                      date: msgDateIso,
+                      name: message.name ?? null,
+                      messageType: message.messageType,
+                      otid: message.otid ?? null,
+                      senderId: message.senderId ?? null,
+                      stepId: message.stepId ?? null,
+                      isErr: message.isErr ?? null,
+                      seqId: message.seqId ?? null,
+                      runId: message.runId ?? null,
+                      reasoning: message.reasoning,
+                      source: message.source ?? null,
+                    },
                   },
                 });
               }
@@ -352,6 +468,23 @@ export class LettaChatModel implements LanguageModelV2 {
                   toolCallId: accumulated.toolCallId,
                   toolName: accumulated.toolName,
                   input: accumulated.accumulatedArguments,
+                  providerMetadata: {
+                    letta: {
+                      id: message.id,
+                      date: msgDateIso,
+                      name: message.name ?? null,
+                      messageType: message.messageType,
+                      otid: message.otid ?? null,
+                      senderId: message.senderId ?? null,
+                      stepId: message.stepId ?? null,
+                      isErr: message.isErr ?? null,
+                      seqId: message.seqId ?? null,
+                      runId: message.runId ?? null,
+                      toolCallId: message.toolCall.toolCallId ?? null,
+                      toolCallName: message.toolCall.name ?? null,
+                      toolCallArguments: message.toolCall.arguments ?? null,
+                    },
+                  },
                 });
 
                 // Remove from buffer since it's complete
@@ -360,6 +493,45 @@ export class LettaChatModel implements LanguageModelV2 {
                 // JSON is still incomplete - continue accumulating
                 // Don't emit anything yet
               }
+            }
+
+            // Handle tool return messages (always single payload)
+            if (message.messageType === "tool_return_message") {
+              const toolCallId = message.toolCallId || `call-${Date.now()}`;
+              const toolName = message.name || "unknown_tool";
+              const result = message.toolReturn || "";
+              const isError = message.status === "error";
+
+              // Build provider metadata with all Letta-specific data
+              const providerMetadata = {
+                letta: {
+                  id: message.id,
+                  date: msgDateIso,
+                  name: message.name ?? null,
+                  messageType: message.messageType,
+                  otid: message.otid ?? null,
+                  senderId: message.senderId ?? null,
+                  stepId: message.stepId ?? null,
+                  isErr: message.isErr ?? null,
+                  seqId: message.seqId ?? null,
+                  runId: message.runId ?? null,
+                  toolReturn: message.toolReturn,
+                  status: message.status,
+                  toolCallId: message.toolCallId,
+                  stdout: message.stdout ?? null,
+                  stderr: message.stderr ?? null,
+                },
+              };
+
+              // Emit the tool result
+              controller.enqueue({
+                type: "tool-result",
+                toolCallId: toolCallId,
+                toolName: toolName,
+                result: result,
+                isError: isError,
+                providerMetadata: providerMetadata,
+              });
             }
           }
 
@@ -390,7 +562,6 @@ export class LettaChatModel implements LanguageModelV2 {
             },
           });
         } catch (error) {
-          console.error("Stream processing error:", error);
           controller.error(error);
         } finally {
           controller.close();

@@ -1,5 +1,7 @@
 # AI SDK - Letta Provider
 
+> Note: This fork is updated for Vercel AI SDK v5 (ai@5). Until the upstream repository merges these changes, use this fork to test and integrate with AI SDK v5.
+
 ![NPM Version](https://img.shields.io/npm/v/%40letta-ai%2Fvercel-ai-sdk-provider)
 
 The official Vercel AI SDK provider for [Letta](https://www.letta.com) - the platform for building stateful AI agents with long-term memory. This provider enables you to use Letta agents seamlessly with the Vercel AI SDK ecosystem.
@@ -92,9 +94,7 @@ const result = streamText({
       agent: { id: 'your-agent-id' }
     }
   },
-  messages: [
-    { role: 'user', content: 'Tell me a story about a robot learning to paint.' }
-  ],
+  prompt: 'Tell me a story about a robot learning to paint.',
 });
 
 for await (const textPart of result.textStream) {
@@ -133,9 +133,7 @@ const result = streamText({
       timeoutInSeconds: 300 // The maximum time to wait for a response in seconds (default: 1000)
     }
   },
-  messages: [
-    { role: 'user', content: 'Tell me a story about a robot learning to paint.' }
-  ],
+  prompt: 'Tell me a story about a robot learning to paint.',
 });
 
 for await (const textPart of result.textStream) {
@@ -148,25 +146,39 @@ for await (const textPart of result.textStream) {
 
 ### Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `LETTA_API_KEY` | Your Letta API key (required for Letta Cloud) | - |
-| `LETTA_BASE_URL` | The base URL for Letta API | `https://api.letta.com` |
+| Variable | Description | Default (Cloud) | Default (Local) |
+|----------|-------------|-----------------|-----------------|
+| `LETTA_API_KEY` | Your Letta API key | Required | Not required |
+| `LETTA_BASE_URL` | The base URL for Letta API | `https://api.letta.com` | `http://localhost:8283` |
 
 ### Provider Setup
 
 #### Letta Cloud (Recommended)
 
+**Required Environment Variable:**
+- `LETTA_API_KEY` - Your Letta Cloud API key
+
 ```typescript
 import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
 
-// Uses LETTA_API_KEY and LETTA_BASE_URL from environment
+// Requires LETTA_API_KEY environment variable
 const model = lettaCloud(); // Model configuration (LLM, temperature, etc.) is managed through your Letta agent
 ```
 
 #### Local Letta Instance
 
 For local development with Letta running on `http://localhost:8283`:
+
+**No API key required!** Local instances (localhost or 127.0.0.1) automatically work without authentication.
+
+```typescript
+import { lettaLocal } from '@letta-ai/vercel-ai-sdk-provider';
+
+// Works without LETTA_API_KEY for local development
+const model = lettaLocal(); // Model configuration (LLM, temperature, etc.) is managed through your Letta agent
+```
+
+Optionally, you can set a custom local URL:
 
 ```bash
 # .env
@@ -179,19 +191,14 @@ Or export directly:
 export LETTA_BASE_URL=http://localhost:8283
 ```
 
-**Remember:** Exported variables need to be available when running your application.
-
-```typescript
-import { lettaLocal } from '@letta-ai/vercel-ai-sdk-provider';
-
-const model = lettaLocal(); // Model configuration (LLM, temperature, etc.) is managed through your Letta agent
-```
+**Note:** Exported variables need to be available when running your application.
 
 #### Custom Configuration
 
 ```typescript
 import { createLetta } from '@letta-ai/vercel-ai-sdk-provider';
 
+// For cloud/remote instances - requires API key
 const letta = createLetta({
   baseUrl: 'https://your-custom-letta-endpoint.com',
   token: 'your-access-token'
@@ -210,7 +217,7 @@ const model = letta(); // Model configuration (LLM, temperature, etc.) is manage
 import { LettaClient } from "@letta-ai/letta-client";
 
 const client = new LettaClient({
-  token: process.env.LETTA_API_KEY
+  token: process.env.LETTA_API_KEY,
   project: "your-project-id" // optional param
 });
 
@@ -287,7 +294,7 @@ interface ChatProps {
   existingMessages?: UIMessage[];
 }
 
-export function StreamingChat({ agentId, existingMessages = [] }: ChatProps) {
+export function Chat({ agentId, existingMessages = [] }: ChatProps) {
   const [input, setInput] = useState('');
 
   const { messages, sendMessage, status } = useChat({
@@ -349,7 +356,7 @@ export function StreamingChat({ agentId, existingMessages = [] }: ChatProps) {
 // app/page.tsx - Streaming chat page
 import { LettaClient } from '@letta-ai/letta-client';
 import { convertToAiSdkMessage } from '@letta-ai/vercel-ai-sdk-provider';
-import { StreamingChat } from './StreamingChat';
+import { Chat } from './Chat';
 
 export default async function HomePage() {
   const agentId = process.env.LETTA_AGENT_ID;
@@ -369,7 +376,7 @@ export default async function HomePage() {
   return (
     <div>
       <h1>Streaming Chat with Letta Agent</h1>
-      <StreamingChat
+      <Chat
         agentId={agentId}
         existingMessages={existingMessages}
       />
@@ -380,7 +387,116 @@ export default async function HomePage() {
 
 
 
+## AI SDK v5 Compatibility
+
+This provider is compatible with AI SDK v5 and uses the updated UI message and tool part structures.
+
+Key changes you should be aware of when consuming the provider in v5:
+
+- Tool invocation parts are typed per tool: `type: "tool-${toolName}"` (the old generic `tool-invocation` part has been removed from v5 UI types).
+- Tool results should be read from `output` (not `result`). Error cases use `state: 'output-error'` and may include `errorText`.
+- Reasoning parts live in the UI message `parts` array with `{ type: 'reasoning', text }`.
+- File attachments use a standard `file` part with `{ type: 'file', url, mediaType }`.
+- Import UI utilities (if needed) from `ai` directly — `@ai-sdk/ui-utils` is removed in v5.
+- Use `providerOptions` (not `providerMetadata`) when passing provider-specific options at call time.
+- If you specify token limits, prefer `maxOutputTokens` over the legacy `maxTokens`.
+
+Examples (reading tool parts and files from UI messages):
+
+```ts
+// Tool parts (v5): type is "tool-<name>"
+const isToolPart = (part: { type: string }): boolean => part.type.startsWith('tool-');
+
+// File parts (v5): standard file attachment with URL and media type
+const isFilePart = (part: any): part is { type: 'file'; url: string; mediaType: string } => part?.type === 'file' && typeof part.url === 'string';
+
+message.parts?.forEach((part) => {
+  if (isToolPart(part)) {
+    // state can be: 'input-available' | 'output-available' | 'output-error'
+    if ('toolCallId' in part) console.log('Tool call:', part.toolCallId);
+    if ('input' in part && part.input != null) console.log('Input:', part.input);
+    if ('output' in part && part.output != null) console.log('Output:', part.output);
+    if ('errorText' in part && part.errorText) console.error('Tool Error:', part.errorText);
+  }
+  if (isFilePart(part)) {
+    console.log('File URL:', part.url, 'Media Type:', part.mediaType);
+  }
+});
+```
+
 ## Advanced Features
+
+### Message Roles (System vs User)
+
+Letta agents support different message roles. You can send messages as `user` or `system`:
+
+```typescript
+import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
+import { generateText } from 'ai';
+
+// Using prompt (defaults to user role)
+const promptResult = await generateText({
+  model: lettaCloud(),
+  providerOptions: {
+    letta: {
+      agent: { id: 'your-agent-id' }
+    }
+  },
+  prompt: 'What is the weather like today?', // Automatically sent as role: 'user'
+});
+
+// User message - using messages array (same as prompt above)
+const userResult = await generateText({
+  model: lettaCloud(),
+  providerOptions: {
+    letta: {
+      agent: { id: 'your-agent-id' }
+    }
+  },
+  messages: [
+    { role: 'user', content: 'What is the weather like today?' }
+  ],
+});
+
+// System message - for instructions or context
+const systemResult = await generateText({
+  model: lettaCloud(),
+  providerOptions: {
+    letta: {
+      agent: { id: 'your-agent-id' }
+    }
+  },
+  messages: [
+    { role: 'system', content: 'The user prefers metric units. Always provide temperature in Celsius.' }
+  ],
+});
+
+
+// 🔴 Note: This will NOT send multiple messages to the agent
+const systemResult = await generateText({
+  model: lettaCloud(),
+  providerOptions: {
+    letta: {
+      agent: { id: 'your-agent-id' }
+    }
+  },
+  messages: [
+    { role: 'user', content: 'What is the weather like today?' },
+    { role: 'system', content: 'The user prefers metric units. Always provide temperature in Celsius.' },
+    { role: 'user', content: 'I like the weather today.' } // Only this last message will get sent to the agent
+  ],
+});
+```
+
+**Message Role Behavior:**
+- **`prompt`**: Convenience parameter that defaults to `role: 'user'`
+- **`user`**: Standard conversational messages from the user
+- **`system`**: Instructions, context, or configuration for the agent's behavior
+
+**Important:**
+- Letta accepts only **one message at a time** in the messages array. The backend SDK processes messages sequentially.
+- Using `prompt` is equivalent to sending a single message with `role: 'user'`
+- For conversation history, use the `convertToAiSdkMessage` utility to load existing messages from your Letta agent (see "Using Existing Messages" section below).
 
 ### Reasoning Support
 
@@ -484,8 +600,6 @@ message.parts?.forEach((part) => {
 - **Agent Reasoning** (`non_reasoner_model`): The internal reasoning of the agent signature
 
 
-
-
 ### Message Conversion
 
 Convert between Letta message formats and AI SDK formats:
@@ -527,26 +641,29 @@ See guide [here](https://docs.letta.com/guides/agents/filesystem).
 
 Once tools are configured on your agent, they work seamlessly with both streaming and non-streaming. Tool calls are handled automatically by Letta, so you don't need to define or execute tool functions in your AI SDK code.
 
-However, the Vercel AI SDK requires tool definitions in the configuration to prevent errors. You must provide placeholder tool configurations:
+However, the Vercel AI SDK requires tool definitions in the configuration to prevent errors. The Letta provider includes helper functions to create tool placeholders:
 
 ```typescript
+import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
 import { z } from 'zod';
 
 // Use with streaming
 const streamResult = streamText({
   model: lettaCloud(),
-  // Provide placeholder tool configurations to prevent bad AI SDK tool message errors
   tools: {
-    web_search: {
-      description: "Search the web",
-      inputSchema: z.any(),
-      execute: async () => "Handled by Letta",
-    },
-    memory_replace: {
-      description: "Replace memory content",
-      inputSchema: z.any(),
-      execute: async () => "Handled by Letta",
-    },
+    // Tools can be defined with just a name
+    web_search: lettaCloud.tool("web_search"),
+    memory_insert: lettaCloud.tool("memory_insert"),
+    analytics: lettaCloud.tool("analytics"),
+
+    // Optionally provide description and schema (placeholders only - execution handled by Letta)
+    structured_tool: lettaCloud.tool("structured_tool", {
+      description: "A tool with typed inputs",
+      inputSchema: z.object({
+        event: z.string(),
+        properties: z.record(z.any()),
+      }),
+    }),
   },
   providerOptions: {
     letta: {
@@ -558,19 +675,22 @@ const streamResult = streamText({
 
 // Use with non-streaming
 const generateResult = await generateText({
-  model: lettaCloud(),
+  model: lettaCloud(), // replace with lettaLocal() if you're self-hosted, or letta() for custom configs
   tools: {
-    // Provide placeholder tool configurations to prevent bad AI SDK tool message errors
-    web_search: {
-      description: "Search the web",
-      inputSchema: z.any(),
-      execute: async () => "Handled by Letta",
-    },
-    memory_replace: {
-      description: "Replace memory content",
-      inputSchema: z.any(),
-      execute: async () => "Handled by Letta",
-    },
+    // Tools can be defined with just a name
+    web_search: lettaCloud.tool("web_search"),
+    memory_replace: lettaCloud.tool("memory_replace"),
+    core_memory_append: lettaCloud.tool("core_memory_append"),
+    database_query: lettaCloud.tool("database_query"),
+    my_custom_tool: lettaCloud.tool("my_custom_tool"),
+
+    // Optionally provide description and schema (placeholders only - execution handled by Letta)
+    typed_query: lettaCloud.tool("typed_query", {
+      description: "Query with typed parameters",
+      inputSchema: z.object({
+        query: z.string(),
+      }),
+    }),
   },
   providerOptions: {
     letta: {
@@ -581,29 +701,46 @@ const generateResult = await generateText({
 });
 ```
 
-**Note**: The actual tool execution happens in Letta - these configurations are placeholders required by the AI SDK to prevent runtime errors.
+**Note**: The actual tool execution happens in Letta - these tool configurations are placeholders required by the AI SDK to prevent runtime errors. The tool names should match the tools configured on your Letta agent. You can optionally provide descriptions and input schemas for better code documentation, but they are not required for functionality.
 
 #### Accessing Tool Calls
 
-Tool calls appear in message parts and can be filtered by type:
+Tool calls appear in message parts as named tool types (e.g., `tool-web_search`, `tool-calculator`):
 
 ```typescript
-// Type guard for named tool parts
-const isNamedTool = (part: { type: string; [key: string]: unknown }): boolean =>
-  part.type.startsWith("tool-") && part.type !== "tool-invocation";
+import { ToolUIPart } from 'ai';
+
+// Type guard for named tool parts (AI SDK v5)
+const isNamedTool = (part: {
+  type: string;
+  [key: string]: unknown;
+}): part is ToolUIPart => part.type.startsWith("tool-");
 
 // Filter tool parts from message parts
 const toolParts = message.parts?.filter(isNamedTool) || [];
 
 toolParts.forEach(part => {
-  console.log('Tool Type:', part.type); // e.g., "tool-call", "tool-result"
-  console.log('State:', part.state);
-  console.log('Call ID:', part.toolCallId);
-  console.log('Input:', part.input);
-  console.log('Output:', part.output);
+  console.log('Tool Type:', part.type); // e.g., "tool-web_search", "tool-calculator"
+
+  // Safely access properties that may exist
+  if ("state" in part) {
+    console.log('State:', part.state); // e.g., "input-available", "output-available", "output-error"
+  }
+
+  if ("toolCallId" in part) {
+    console.log('Call ID:', part.toolCallId);
+  }
+
+  if ("input" in part && part.input !== null && part.input !== undefined) {
+    console.log('Input:', part.input);
+  }
+
+  if ("output" in part && part.output !== null && part.output !== undefined) {
+    console.log('Output:', part.output);
+  }
 
   // Handle errors if present
-  if (part.errorText) {
+  if ("errorText" in part && part.errorText) {
     console.error('Tool Error:', part.errorText);
   }
 });
@@ -643,7 +780,7 @@ Both streaming and non-streaming approaches use the same provider pattern:
 // Non-streaming
 const result = await generateText({
   model: lettaCloud(),
-  messages: [{ role: 'user', content: 'Hello!' }],
+  prompt: 'Hello!',
   providerOptions: {
     letta: {
       agent: { id: 'your-agent-id' }
@@ -654,7 +791,7 @@ const result = await generateText({
 // Streaming
 const stream = streamText({
   model: lettaCloud(),
-  messages: [{ role: 'user', content: 'Hello!' }],
+  prompt: 'Hello!',
   providerOptions: {
     letta: {
       agent: { id: 'your-agent-id' }
@@ -671,7 +808,7 @@ For streaming operations that may take longer to complete, you can use the `back
 // Streaming with background execution
 const stream = streamText({
   model: lettaCloud(),
-  messages: [{ role: 'user', content: 'Process this complex task...' }],
+  prompt: 'Process this complex task...',
   providerOptions: {
     letta: {
       agent: { id: 'your-agent-id' },
@@ -684,6 +821,50 @@ const stream = streamText({
 ```
 
 **Note**: Background executions are useful for complex streaming tasks that may exceed typical request timeouts. See [Letta's long-running guide](https://docs.letta.com/guides/agents/long-running) for more details.
+
+### Stop Conditions
+
+The Vercel AI SDK provides a `stopWhen` parameter to control when generation stops. However, **`stopWhen` only affects what the AI SDK returns to your application—it does not control Letta's backend execution.**
+
+**Important**: If you want to limit the number of steps Letta executes on the backend, use `maxSteps` in `providerOptions.letta.agent.maxSteps` instead of relying on `stopWhen`.
+
+```typescript
+// 🔴 This will NOT stop Letta from executing 10 steps on the backend
+const result = await generateText({
+  model: lettaCloud(),
+  prompt: 'Help me with a task',
+  providerOptions: {
+    letta: {
+      agent: {
+        id: 'your-agent-id',
+        maxSteps: 10  // Letta will execute up to 10 steps
+      }
+    }
+  },
+  stopWhen: stepCountIs(5)  // AI SDK stops after 5 steps, but Letta already executed 10
+});
+
+// ✅ This correctly limits Letta to 5 steps
+const result = await generateText({
+  model: lettaCloud(),
+  prompt: 'Help me with a task',
+  providerOptions: {
+    letta: {
+      agent: {
+        id: 'your-agent-id',
+        maxSteps: 5  // Letta will only execute 5 steps
+      }
+    }
+  },
+});
+```
+
+**Why this matters**: When you set `maxSteps: 10` on the Letta side and `stopWhen: stepCountIs(5)` on the AI SDK side:
+- Letta's backend will execute all 10 steps
+- The AI SDK will only return/display the first 5 steps to your application
+- You'll be charged for 10 steps but only see 5 steps in your results
+
+**Best practice**: Set `maxSteps` in `providerOptions.letta.agent.maxSteps` to control Letta's execution, and only use `stopWhen` if you need additional client-side filtering logic.
 
 ### When to Use Each Approach
 
