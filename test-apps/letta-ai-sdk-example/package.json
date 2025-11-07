@@ -10,10 +10,12 @@
   },
   "dependencies": {
     "@ai-sdk/react": "^2.0.45",
-    "@letta-ai/letta-client": "^0.0.68665",
+    "@letta-ai/letta-client": "^1.0.0-alpha.15",
     "@letta-ai/vercel-ai-sdk-provider": "file:../..",
     "@tanstack/react-query": "^5.82.0",
     "ai": "^5.0.89",
+    "lightningcss": "^1.30.2",
+    "lightningcss-darwin-arm64": "^1.30.2",
     "next": "15.2.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

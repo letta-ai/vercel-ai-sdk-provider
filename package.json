@@ -64,8 +64,5 @@
   },
   "keywords": [
     "ai"
-  ],
-  "workspaces": [
-    "test-apps/letta-ai-sdk-example"
   ]
 }
