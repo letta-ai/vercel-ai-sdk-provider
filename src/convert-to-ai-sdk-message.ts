@@ -1,5 +1,11 @@
 import { LettaMessageUnion } from "@letta-ai/letta-client/api";
-import { UIMessage, TextUIPart, ToolUIPart, ReasoningUIPart, FileUIPart } from "ai";
+import {
+  UIMessage,
+  TextUIPart,
+  ToolUIPart,
+  ReasoningUIPart,
+  FileUIPart,
+} from "ai";
 
 type DynamicToolType = `tool-${string}`;
 
@@ -18,24 +24,15 @@ const baseOptions: ConvertToAiSdkMessageOptions = {
   ],
 };
 
-function transformMessageContent(content: string | any[]): (TextUIPart | FileUIPart)[] {
+function transformMessageContent(
+  content: string | any[],
+): (TextUIPart | FileUIPart)[] {
   if (Array.isArray(content)) {
     const parts: (TextUIPart | FileUIPart)[] = [];
     for (const val of content) {
       const partType = (val as any).type as string;
       if (partType === "text") {
         parts.push({ type: "text", text: (val as any).text });
-      } else if (partType === "image_url") {
-        const url = (val as any).imageUrl?.url ?? (val as any).imageUrl;
-        if (typeof url === "string") {
-          parts.push({ type: "file", url, mediaType: "image/*" });
-        }
-      } else if (partType === "input_audio") {
-        const audio = (val as any).inputAudio;
-        const url = audio?.url ?? undefined;
-        if (typeof url === "string") {
-          parts.push({ type: "file", url, mediaType: "audio/*" });
-        }
       } else {
         throw new Error(`Content type ${String(partType)} not supported`);
       }
@@ -141,7 +138,7 @@ export function convertToAiSdkMessage(
       const toolName = message.toolCall?.name || "";
       const toolInvocation: ToolUIPart = {
         // v5: typed tool name in part type
-        type: (`tool-${toolName}` as DynamicToolType) as any,
+        type: `tool-${toolName}` as DynamicToolType as any,
         toolCallId: message.toolCall?.toolCallId || "",
         state: "output-available" as const,
         input: message.toolCall?.arguments || {},
@@ -160,14 +157,22 @@ export function convertToAiSdkMessage(
       sdkMessageObj[message.id].role = "assistant";
 
       const toolName = message.name || "";
-      const state = message.status === "error" ? ("output-error" as const) : ("output-available" as const);
+      const state =
+        message.status === "error"
+          ? ("output-error" as const)
+          : ("output-available" as const);
       const toolInvocation: ToolUIPart = {
-        type: (`tool-${toolName}` as DynamicToolType) as any,
+        type: `tool-${toolName}` as DynamicToolType as any,
         toolCallId: message.toolCallId || "",
         state,
         input: {},
         output: message.toolReturn,
-        errorText: message.status === "error" ? (typeof message.toolReturn === "string" ? message.toolReturn : JSON.stringify(message.toolReturn)) : undefined,
+        errorText:
+          message.status === "error"
+            ? typeof message.toolReturn === "string"
+              ? message.toolReturn
+              : JSON.stringify(message.toolReturn)
+            : undefined,
         callProviderMetadata: {
           letta: {
             id: message.id,
