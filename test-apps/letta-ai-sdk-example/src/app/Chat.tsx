@@ -22,6 +22,12 @@ const isReasoningPart = (part: {
 } =>
   part.type === "reasoning" && "text" in part && typeof part.text === "string";
 
+// Letta reasoning source constants
+const LETTA_SOURCE = {
+  REASONER_MODEL: 'reasoner_model',
+  NON_REASONER_MODEL: 'non_reasoner_model',
+} as const;
+
 // Helper to determine reasoning source
 const getReasoningSource = (part: {
   type: string;
@@ -33,14 +39,14 @@ const getReasoningSource = (part: {
   // "non_reasoner_model" = agent-level reasoning (from Letta platform)
   const source = part.providerMetadata?.letta?.source;
 
-  if (source === "reasoner_model") {
+  if (source === LETTA_SOURCE.REASONER_MODEL) {
     return {
       source: "model" as const,
       text: part.text,
     };
   }
 
-  if (source === "non_reasoner_model") {
+  if (source === LETTA_SOURCE.NON_REASONER_MODEL) {
     return {
       source: "agent" as const,
       text: part.text,
@@ -146,11 +152,13 @@ export function Chat(props: ChatProps) {
           >
             <div className="flex justify-between items-center mb-2">
               <div className="font-bold text-lg">
-                {message.role === "user"
-                  ? "👤 User"
-                  : message.role === "system"
-                    ? "⚙️ System"
-                    : "🤖 Assistant"}
+                <span role={message.role === "system" ? "status" : undefined}>
+                  {message.role === "user"
+                    ? "👤 User"
+                    : message.role === "system"
+                      ? "⚙️ System"
+                      : "🤖 Assistant"}
+                </span>
               </div>
               <div className="text-xs text-gray-500">ID: {message.id}</div>
             </div>
@@ -161,7 +169,7 @@ export function Chat(props: ChatProps) {
                 ? message.parts.map((part, index) => (
                     <div key={index}>
                       {/* Text parts - regular message content */}
-                      {part.type === "text" && (
+{part.type === "text" && (
                         <div className={`p-3 rounded-lg ${
                           message.role === "system"
                             ? "bg-yellow-50 border-l-4 border-yellow-400"
@@ -171,7 +179,9 @@ export function Chat(props: ChatProps) {
                             message.role === "system"
                               ? "text-yellow-900 text-sm"
                               : "text-gray-800"
-                          }`}>
+                          }`}
+                          role={message.role === "system" ? "status" : undefined}
+                          aria-label={message.role === "system" ? "System message" : undefined}>
                             {part.text}
                           </div>
                         </div>

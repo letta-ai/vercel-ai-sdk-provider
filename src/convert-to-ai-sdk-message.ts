@@ -1,5 +1,13 @@
 import { LettaMessageUnion } from "@letta-ai/letta-client/api";
-import { UIMessage, TextUIPart, ToolUIPart, ReasoningUIPart } from "ai";
+import {
+  UIMessage,
+  TextUIPart,
+  ToolUIPart,
+  ReasoningUIPart,
+  FileUIPart,
+} from "ai";
+
+type DynamicToolType = `tool-${string}`;
 
 interface ConvertToAiSdkMessageOptions {
   allowMessageTypes?: LettaMessageUnion["messageType"][];
@@ -15,6 +23,25 @@ const baseOptions: ConvertToAiSdkMessageOptions = {
     "reasoning_message",
   ],
 };
+
+function transformMessageContent(
+  content: string | any[],
+): (TextUIPart | FileUIPart)[] {
+  if (Array.isArray(content)) {
+    const parts: (TextUIPart | FileUIPart)[] = [];
+    for (const val of content) {
+      const partType = (val as any).type as string;
+      if (partType === "text") {
+        parts.push({ type: "text", text: (val as any).text });
+      } else {
+        throw new Error(`Content type ${String(partType)} not supported`);
+      }
+    }
+    return parts;
+  }
+  // string content
+  return [{ type: "text", text: content as string }];
+}
 
 export function convertToAiSdkMessage(
   messages: LettaMessageUnion[],
@@ -53,60 +80,20 @@ export function convertToAiSdkMessage(
 
     if (message.messageType === "user_message") {
       sdkMessageObj[message.id].role = "user";
-      let text = message.content;
-
-      if (Array.isArray(text)) {
-        text = text
-          .map((val) => {
-            switch (val.type) {
-              case "text":
-                return val.text;
-              default:
-                throw new Error(`File type ${val.type} not supported`);
-            }
-          })
-          .join("");
-      }
-
-      const textPart: TextUIPart = {
-        type: "text",
-        text,
-      };
-
+      const parts = transformMessageContent(message.content as any);
       if (!sdkMessageObj[message.id].parts) {
         sdkMessageObj[message.id].parts = [];
       }
-
-      sdkMessageObj[message.id].parts.push(textPart);
+      sdkMessageObj[message.id].parts.push(...parts);
     }
 
     if (message.messageType === "assistant_message") {
       sdkMessageObj[message.id].role = "assistant";
-      let text = message.content;
-
-      if (Array.isArray(text)) {
-        text = text
-          .map((val) => {
-            switch (val.type) {
-              case "text":
-                return val.text;
-              default:
-                throw new Error(`File type ${val.type} not supported`);
-            }
-          })
-          .join("");
-      }
-
-      const textPart: TextUIPart = {
-        type: "text",
-        text,
-      };
-
+      const parts = transformMessageContent(message.content as any);
       if (!sdkMessageObj[message.id].parts) {
         sdkMessageObj[message.id].parts = [];
       }
-
-      sdkMessageObj[message.id].parts.push(textPart);
+      sdkMessageObj[message.id].parts.push(...parts);
     }
 
     if (message.messageType === "reasoning_message") {
@@ -148,13 +135,15 @@ export function convertToAiSdkMessage(
       sdkMessageObj[message.id].role = "assistant";
 
       // Use AI SDK's ToolUIPart structure
+      const toolName = message.toolCall?.name || "";
       const toolInvocation: ToolUIPart = {
-        type: "tool-invocation" as const,
+        // v5: typed tool name in part type
+        type: `tool-${toolName}` as DynamicToolType as any,
         toolCallId: message.toolCall?.toolCallId || "",
         state: "output-available" as const,
         input: message.toolCall?.arguments || {},
         output: "",
-      };
+      } as any;
 
       sdkMessageObj[message.id].parts.push(toolInvocation);
     }
@@ -167,12 +156,23 @@ export function convertToAiSdkMessage(
 
       sdkMessageObj[message.id].role = "assistant";
 
+      const toolName = message.name || "";
+      const state =
+        message.status === "error"
+          ? ("output-error" as const)
+          : ("output-available" as const);
       const toolInvocation: ToolUIPart = {
-        type: "tool-invocation" as const,
+        type: `tool-${toolName}` as DynamicToolType as any,
         toolCallId: message.toolCallId || "",
-        state: "output-available" as const,
+        state,
         input: {},
         output: message.toolReturn,
+        errorText:
+          message.status === "error"
+            ? typeof message.toolReturn === "string"
+              ? message.toolReturn
+              : JSON.stringify(message.toolReturn)
+            : undefined,
         callProviderMetadata: {
           letta: {
             id: message.id,
@@ -192,7 +192,7 @@ export function convertToAiSdkMessage(
             stderr: message.stderr ?? null,
           },
         },
-      };
+      } as any;
 
       sdkMessageObj[message.id].parts.push(toolInvocation);
     }

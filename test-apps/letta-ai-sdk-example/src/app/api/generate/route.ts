@@ -9,16 +9,35 @@ import { AGENT_ID, TEST_MODE } from "@/app/env-vars";
 export async function POST(req: Request) {
   const { messages, agentId } = await req.json();
 
-  console.log("messages", messages);
+  console.log("messages received:", Array.isArray(messages) ? messages.length : 0);
 
   // Use agentId from request body if provided, otherwise fall back to env var
   const activeAgentId = agentId || AGENT_ID;
 
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return new Response(JSON.stringify({ error: "messages array is required" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  interface MessagePart {
+    type: string;
+    text?: string;
+  }
+
+  interface Message {
+    content: string | Array<MessagePart>;
+  }
+
+  const extractText = (msg: Message) =>
+    typeof msg?.content === "string"
+      ? msg.content
+      : msg?.content?.map?.((part: MessagePart) => (part?.type === "text" ? part.text : "")).join(" ") || "";
+
   // Extract content from the last message for prompt
   const lastMessage = messages[messages.length - 1];
-  const promptContent = typeof lastMessage?.content === 'string'
-    ? lastMessage.content
-    : lastMessage?.content?.map?.((part: any) => part.type === 'text' ? part.text : '').join('') || '';
+  const promptContent = extractText(lastMessage);
 
   if (!activeAgentId) {
     throw new Error(
@@ -83,22 +102,18 @@ export async function POST(req: Request) {
       messages: [message],
     });
   } catch (error) {
-    console.error("Error generating text:", error);
-    console.error(
-      "Error details:",
-      JSON.stringify(error, Object.getOwnPropertyNames(error)),
-    );
+    console.error("Error generating text:", {
+      message: error instanceof Error ? error.message : String(error),
+      name: error instanceof Error ? error.name : "unknown",
+    });
 
     // Fallback without extractReasoningMiddleware if there's an issue
     console.log("Falling back to basic reasoning...");
     try {
       const fallbackProvider = TEST_MODE === "local" ? lettaLocal : lettaCloud;
 
-      // Extract content from the last message for prompt
-      const fallbackLastMessage = messages[messages.length - 1];
-      const fallbackPrompt = typeof fallbackLastMessage?.content === 'string'
-        ? fallbackLastMessage.content
-        : fallbackLastMessage?.content?.map?.((part: any) => part.type === 'text' ? part.text : '').join('') || '';
+      // Reuse previously computed prompt
+      const fallbackPrompt = promptContent;
 
       const fallbackResult = await generateText({
         model: fallbackProvider(),
