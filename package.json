@@ -32,7 +32,7 @@
   },
   "dependencies": {
     "@ai-sdk/provider": "^2.0.0",
-    "@ai-sdk/provider-utils": "^3.0.0",
+    "@ai-sdk/provider-utils": "^3.0.16",
     "@letta-ai/letta-client": "^0.0.68664"
   },
   "devDependencies": {
@@ -42,11 +42,11 @@
     "typescript": "5.6.3",
     "vite": "^7.1.5",
     "vitest": "^3.1.1",
-    "zod": "^3.25.76"
+    "zod": "^4.1.12"
   },
   "peerDependencies": {
-    "ai": "^5.0.0",
-    "zod": "^4.1.8"
+    "ai": "^5.0.89",
+    "zod": "^4.1.12"
   },
   "engines": {
     "node": ">=18"

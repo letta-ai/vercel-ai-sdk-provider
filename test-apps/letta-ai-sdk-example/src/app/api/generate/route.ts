@@ -21,10 +21,19 @@ export async function POST(req: Request) {
     });
   }
 
-  const extractText = (msg: any) =>
+  interface MessagePart {
+    type: string;
+    text?: string;
+  }
+
+  interface Message {
+    content: string | Array<MessagePart>;
+  }
+
+  const extractText = (msg: Message) =>
     typeof msg?.content === "string"
       ? msg.content
-      : msg?.content?.map?.((part: any) => (part?.type === "text" ? part.text : "")).join(" ") || "";
+      : msg?.content?.map?.((part: MessagePart) => (part?.type === "text" ? part.text : "")).join(" ") || "";
 
   // Extract content from the last message for prompt
   const lastMessage = messages[messages.length - 1];

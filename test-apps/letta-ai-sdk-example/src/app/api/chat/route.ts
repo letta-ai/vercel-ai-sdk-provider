@@ -3,7 +3,16 @@ import { lettaCloud, lettaLocal } from "@letta-ai/vercel-ai-sdk-provider";
 import { AGENT_ID, TEST_MODE } from "@/app/env-vars";
 
 // Helper to extract text content from message
-function extractMessageContent(message: { content: string | Array<{ type: string; text?: string }> }): string {
+interface MessagePart {
+  type: string;
+  text?: string;
+}
+
+interface MessageContent {
+  content: string | Array<MessagePart>;
+}
+
+function extractMessageContent(message: MessageContent): string {
   return typeof message.content === 'string'
     ? message.content
     : message.content.map(part => part.type === 'text' ? (part.text ?? '') : '').join(' ');
@@ -34,7 +43,7 @@ export async function POST(req: Request) {
 
   // Extract content from the last message for prompt
   const lastMessage = modelMessages[modelMessages.length - 1];
-  const promptContent = extractMessageContent(lastMessage as any);
+  const promptContent = extractMessageContent(lastMessage as MessageContent);
 
   console.log('-> promptContent:', promptContent)
 
@@ -76,7 +85,7 @@ export async function POST(req: Request) {
     });
 
     // Check if this is a Letta API error
-    if (error instanceof Error && (error.message.includes("Status code:") || 'statusCode' in (error as any) || 'code' in (error as any))) {
+    if (error instanceof Error && (error.message.includes("Status code:") || 'statusCode' in (error as object) || 'code' in (error as object))) {
       console.error("=== This is a Letta API error ===");
       console.error("The error is coming from Letta's backend, not our SDK");
       console.error(
